@@ -1,0 +1,536 @@
+/* login.css – yangi ikki ustunli dizayn va katta POS klaviatura */
+:root {
+  --zar-red-1: #ff2f47;
+  --zar-red-2: #ff6a5f;
+  --zar-ink-1: #0b0b0f;
+  --zar-kbd-height: 0vh;
+  --zar-shadow-light: rgba(255, 255, 255, 0.16);
+  --zar-shadow-dark: rgba(0, 0, 0, 0.55);
+  --zar-card-bg: rgba(18, 19, 27, 0.65);
+  --zar-card-border: rgba(255, 255, 255, 0.12);
+}
+
+.pos-login-root {
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(36px, 6vh, 72px) 24px;
+  box-sizing: border-box;
+  background:
+    radial-gradient(circle at 12% 8%, rgba(255, 58, 84, 0.18), transparent 38%),
+    radial-gradient(circle at 88% 12%, rgba(132, 74, 255, 0.18), transparent 42%),
+    linear-gradient(180deg, #090910 0%, #050509 65%);
+  font-family: "Inter", "Poppins", system-ui, -apple-system, sans-serif;
+  color: #fff;
+  overflow: hidden;
+  touch-action: manipulation;
+  position: relative;
+}
+
+.pos-login-root::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 100%, rgba(255, 47, 71, 0.15), transparent 55%);
+  pointer-events: none;
+}
+
+.login-top {
+  width: 100%;
+  max-width: 1180px;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  transition: padding-bottom 0.4s ease;
+  position: relative;
+  z-index: 2;
+}
+
+.login-card.glass {
+  width: 100%;
+  border-radius: 34px;
+  border: 1.5px solid var(--zar-card-border);
+  padding: clamp(40px, 5vw, 52px);
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+  backdrop-filter: blur(28px) saturate(165%);
+  -webkit-backdrop-filter: blur(28px) saturate(165%);
+  box-shadow:
+    16px 26px 48px rgba(9, 9, 12, 0.6),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  transition: transform 0.32s ease, box-shadow 0.32s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.login-card.glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at -10% 0%, rgba(255, 255, 255, 0.12), transparent 45%);
+  pointer-events: none;
+}
+
+.login-card.glass:hover {
+  transform: translateY(-6px);
+  box-shadow:
+    22px 32px 56px rgba(9, 9, 12, 0.68),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+.login-card-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  gap: clamp(32px, 5vw, 60px);
+  align-items: start;
+}
+
+.login-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+}
+
+.zar-logo {
+  width: 86px;
+  height: 86px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.12), transparent 70%);
+  border-radius: 24px;
+  transition: transform 0.3s ease;
+}
+
+.zar-logo:hover {
+  transform: rotate(8deg) scale(1.06);
+}
+
+.brand-texts {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.brand-title {
+  font-size: clamp(30px, 3vw, 36px);
+  font-weight: 900;
+  color: var(--zar-red-1);
+  letter-spacing: 0.8px;
+  text-shadow: 0 12px 36px rgba(255, 46, 72, 0.16);
+}
+
+.brand-sub {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.75);
+  font-weight: 600;
+}
+
+.login-subtitle {
+  font-size: 16px;
+  line-height: 1.62;
+  color: rgba(255, 255, 255, 0.74);
+  max-width: 520px;
+}
+
+.login-highlights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+}
+
+.login-highlight-card {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 18px 20px;
+  border-radius: 20px;
+  background: linear-gradient(140deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.login-highlight-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: #fff;
+  background: linear-gradient(130deg, rgba(255, 47, 71, 0.9), rgba(255, 115, 99, 0.8));
+  box-shadow: 0 12px 22px rgba(255, 71, 92, 0.28);
+}
+
+.login-highlight-title {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.login-highlight-desc {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.4;
+}
+
+.form-area {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.login-form {
+  background: linear-gradient(160deg, rgba(10, 10, 16, 0.85), rgba(18, 19, 27, 0.65));
+  border-radius: 26px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: clamp(28px, 4vw, 36px);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05),
+    0 18px 36px rgba(8, 8, 12, 0.55);
+  position: relative;
+  overflow: hidden;
+}
+
+.login-form::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 90% -10%, rgba(255, 47, 71, 0.25), transparent 52%);
+  pointer-events: none;
+}
+
+.login-form-title {
+  font-size: clamp(26px, 3vw, 32px);
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.login-form-helper {
+  font-size: 15px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.input-label {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.76);
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.pos-input {
+  min-height: 78px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.02));
+  border: 1.6px solid rgba(255, 255, 255, 0.14);
+  display: flex;
+  align-items: center;
+  padding: 0 28px;
+  transition: transform 0.28s ease, box-shadow 0.28s ease, border-color 0.28s ease;
+  cursor: pointer;
+  box-shadow: inset 8px 8px 18px rgba(0, 0, 0, 0.45), inset -8px -8px 18px rgba(255, 255, 255, 0.08);
+}
+
+.pos-input.focused {
+  border-color: rgba(255, 46, 72, 0.95);
+  box-shadow:
+    0 0 40px rgba(255, 46, 72, 0.22),
+    inset 8px 8px 18px rgba(0, 0, 0, 0.45),
+    inset -8px -8px 18px rgba(255, 255, 255, 0.1);
+  transform: translateY(-4px);
+}
+
+.input-text {
+  font-size: 26px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.placeholder {
+  color: rgba(255, 255, 255, 0.48);
+  font-weight: 400;
+}
+
+.btn-primary {
+  margin-top: 10px;
+  padding: 20px 16px;
+  font-size: 23px;
+  font-weight: 800;
+  color: var(--zar-ink-1);
+  background: linear-gradient(90deg, var(--zar-red-1), var(--zar-red-2));
+  border: none;
+  border-radius: 20px;
+  box-shadow:
+    0 18px 46px rgba(255, 46, 72, 0.38),
+    inset 0 0 18px rgba(255, 255, 255, 0.22);
+  cursor: pointer;
+  transition: transform 0.26s ease, box-shadow 0.26s ease, filter 0.26s ease;
+}
+
+.btn-primary:hover {
+  transform: translateY(-4px);
+  filter: brightness(1.08);
+  box-shadow:
+    0 24px 54px rgba(255, 46, 72, 0.44),
+    inset 0 0 18px rgba(255, 255, 255, 0.28);
+}
+
+.login-submit {
+  width: 100%;
+}
+
+.login-meta-note {
+  margin-top: 4px;
+  text-align: center;
+  font-size: 14px;
+  letter-spacing: 0.4px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Katta POS klaviatura */
+.pos-keyboard {
+  position: fixed;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  z-index: 1300;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 18px 18px;
+  box-sizing: border-box;
+}
+
+.pos-keyboard .kbd-inner {
+  width: 100%;
+  max-width: 1600px;
+  border-top-left-radius: 38px;
+  border-top-right-radius: 38px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.3));
+  backdrop-filter: blur(22px) brightness(1.14);
+  -webkit-backdrop-filter: blur(22px) brightness(1.14);
+  padding: 28px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-shadow:
+    0 -16px 38px rgba(0, 0, 0, 0.42),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.kbd-row {
+  display: flex;
+  gap: 18px;
+  justify-content: center;
+  flex: 1;
+  min-height: 78px;
+}
+
+.kbd-key {
+  flex: 1;
+  min-width: 78px;
+  min-height: 78px;
+  border-radius: 24px;
+  font-size: 34px;
+  font-weight: 800;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1.5px solid rgba(0, 0, 0, 0.12);
+  color: #1b1b1d;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow:
+    8px 8px 16px rgba(0, 0, 0, 0.2),
+    -8px -8px 16px rgba(255, 255, 255, 0.22);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.kbd-key--pressed {
+  transform: scale(0.88);
+  box-shadow:
+    inset 8px 8px 16px rgba(0, 0, 0, 0.25),
+    inset -8px -8px 16px rgba(255, 255, 255, 0.24);
+}
+
+.kbd-key--special {
+  background: rgba(255, 58, 84, 0.92);
+  color: #fff;
+  box-shadow:
+    8px 8px 16px rgba(255, 58, 84, 0.46),
+    -8px -8px 16px rgba(255, 255, 255, 0.28);
+  font-size: 30px;
+}
+
+.kbd-key--special.kbd-key--pressed {
+  background: rgba(255, 58, 84, 0.75);
+}
+
+.kbd-key--active {
+  background: rgba(255, 46, 72, 1);
+  box-shadow: 0 0 26px rgba(255, 46, 72, 0.82);
+  color: #fff;
+}
+
+.kbd-key--space {
+  flex: 3.5;
+}
+
+.kbd-space-text {
+  font-size: 22px;
+  font-weight: 700;
+  opacity: 0.92;
+  letter-spacing: 1.2px;
+}
+
+.kbd-caps-text {
+  font-size: 20px;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+.kbd-backspace-icon {
+  font-size: 32px;
+  font-weight: 900;
+  opacity: 0.9;
+}
+
+.kbd-enter-icon {
+  font-size: 20px;
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+@media (max-width: 1120px) {
+  .login-card-grid {
+    gap: 32px;
+    grid-template-columns: 1fr;
+  }
+
+  .login-intro {
+    order: 2;
+  }
+
+  .login-form {
+    order: 1;
+  }
+}
+
+@media (max-width: 768px) {
+  .pos-login-root {
+    padding: 32px 18px;
+  }
+
+  .login-card.glass {
+    border-radius: 28px;
+  }
+
+  .login-form {
+    padding: 26px 22px;
+  }
+
+  .pos-input {
+    min-height: 70px;
+    padding: 0 22px;
+    font-size: 24px;
+  }
+
+  .btn-primary {
+    font-size: 21px;
+    padding: 18px 14px;
+  }
+
+  .pos-keyboard .kbd-inner {
+    padding: 24px 18px;
+    gap: 14px;
+  }
+
+  .kbd-row {
+    gap: 14px;
+    min-height: 70px;
+  }
+
+  .kbd-key {
+    min-width: 70px;
+    min-height: 70px;
+    font-size: 28px;
+  }
+}
+
+@media (max-width: 560px) {
+  .login-highlights {
+    grid-template-columns: 1fr;
+  }
+
+  .brand-row {
+    gap: 16px;
+  }
+
+  .zar-logo {
+    width: 74px;
+    height: 74px;
+  }
+
+  .login-form-title {
+    font-size: 26px;
+  }
+
+  .login-form-helper {
+    font-size: 14px;
+  }
+
+  .input-text {
+    font-size: 22px;
+  }
+}
+
+@media (max-width: 420px) {
+  .pos-login-root {
+    padding: 28px 14px;
+  }
+
+  .login-card.glass {
+    padding: 30px 20px;
+  }
+
+  .pos-keyboard .kbd-inner {
+    border-radius: 30px 30px 0 0;
+    padding: 20px 16px;
+  }
+
+  .kbd-key {
+    min-width: 56px;
+    min-height: 64px;
+    font-size: 24px;
+  }
+}
+
+@media (min-width: 1400px) {
+  .kbd-key {
+    min-width: 90px;
+    min-height: 90px;
+    font-size: 38px;
+  }
+
+  .kbd-key--special {
+    font-size: 34px;
+  }
+
+  .kbd-backspace-icon {
+    font-size: 36px;
+  }
+
+  .kbd-space-text {
+    font-size: 26px;
+  }
+}

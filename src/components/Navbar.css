@@ -1,0 +1,316 @@
+.nav-shell {
+  width: 274px;
+  min-height: 100vh;
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 28px;
+  position: sticky;
+  top: 0;
+  background: var(--app-surface);
+  border-right: 1px solid var(--app-border);
+  box-shadow: var(--app-shadow-soft);
+  backdrop-filter: var(--app-blur);
+  transition: width var(--app-transition), padding var(--app-transition);
+}
+
+.nav-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: 0;
+  background: radial-gradient(120% 120% at 10% 0%, rgba(255, 0, 60, 0.14), transparent 60%),
+    radial-gradient(120% 120% at 90% 14%, rgba(99, 102, 241, 0.16), transparent 68%);
+  mix-blend-mode: screen;
+  opacity: 0.9;
+}
+
+.nav-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: relative;
+  z-index: 1;
+}
+
+.nav-logo {
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(255, 0, 60, 0.3), rgba(255, 106, 95, 0.26));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: var(--app-shadow-soft);
+}
+
+.logo-emblem {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: 0.04em;
+}
+
+.nav-brand-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-brand-name {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.nav-brand-sub {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--app-muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.nav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
+.nav-item {
+  display: grid;
+  grid-template-columns: 48px auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border-radius: var(--app-radius-md);
+  border: 1px solid transparent;
+  color: var(--app-text-soft);
+  background: rgba(255, 255, 255, 0.02);
+  position: relative;
+  overflow: hidden;
+  transition: transform var(--app-transition), border-color var(--app-transition), background var(--app-transition), color var(--app-transition);
+}
+
+.nav-item:hover {
+  transform: translateX(6px);
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.nav-item.active {
+  border-color: rgba(255, 0, 60, 0.35);
+  background: rgba(255, 0, 60, 0.12);
+  color: #fff;
+  box-shadow: 0 18px 40px rgba(255, 0, 60, 0.2);
+}
+
+.nav-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(255, 0, 60, 0.08);
+  color: var(--app-accent);
+  font-size: 1.2rem;
+}
+
+.nav-item.active .nav-icon {
+  background: rgba(255, 0, 60, 0.18);
+  color: #fff;
+}
+
+.nav-text {
+  font-size: 0.96rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.nav-glow {
+  position: absolute;
+  inset: 10% 14%;
+  border-radius: 20px;
+  background: radial-gradient(circle, rgba(255, 0, 60, 0.35) 0%, transparent 60%);
+  opacity: 0;
+  filter: blur(12px);
+  transition: opacity var(--app-transition);
+}
+
+.nav-item:hover .nav-glow,
+.nav-item.active .nav-glow {
+  opacity: 1;
+}
+
+.nav-footer {
+  margin-top: auto;
+  padding-top: 18px;
+  border-top: 1px solid var(--app-border);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  position: relative;
+  z-index: 1;
+}
+
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.nav-user-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #fff;
+  background: linear-gradient(135deg, rgba(255, 0, 60, 0.55), rgba(255, 106, 95, 0.48));
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.nav-user-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav-user-name {
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.nav-user-role {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--app-muted);
+}
+
+.nav-logout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--app-radius-md);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: var(--app-shadow-soft);
+}
+
+.nav-logout:hover {
+  background: linear-gradient(120deg, var(--app-primary), var(--app-accent));
+  box-shadow: 0 18px 40px rgba(255, 0, 60, 0.32);
+}
+
+.nav-logout svg {
+  font-size: 1.05rem;
+}
+
+@media (max-width: 1180px) {
+  .nav-shell {
+    width: 258px;
+    padding: 24px 20px;
+  }
+
+  .nav-item {
+    grid-template-columns: 42px auto;
+    padding: 10px 14px;
+  }
+
+  .nav-icon {
+    width: 42px;
+    height: 42px;
+  }
+}
+
+@media (max-width: 980px) {
+  .nav-shell {
+    position: fixed;
+    inset: auto 0 0 0;
+    width: 100%;
+    min-height: 0;
+    height: 74px;
+    flex-direction: row;
+    align-items: center;
+    padding: 0 18px;
+    border-right: none;
+    border-top: 1px solid var(--app-border);
+    box-shadow: 0 -14px 32px rgba(8, 10, 24, 0.4);
+    z-index: 999;
+    gap: 16px;
+  }
+
+  .nav-shell::before {
+    inset: -20% -20% 0 -20%;
+    background: radial-gradient(120% 120% at 50% 50%, rgba(255, 0, 60, 0.22), transparent 70%);
+  }
+
+  .nav-brand,
+  .nav-footer {
+    display: none;
+  }
+
+  .nav-list {
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .nav-item {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.04);
+    border-color: transparent;
+  }
+
+  .nav-item.active {
+    transform: translateY(-6px);
+  }
+
+  .nav-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 1.05rem;
+  }
+
+  .nav-text {
+    font-size: 0.75rem;
+  }
+
+  .nav-glow {
+    inset: 12% 18%;
+  }
+}
+
+@media (max-width: 520px) {
+  .nav-item {
+    gap: 6px;
+    padding: 10px 8px;
+  }
+
+  .nav-text {
+    font-size: 0.7rem;
+  }
+
+  .nav-icon {
+    width: 34px;
+    height: 34px;
+  }
+}

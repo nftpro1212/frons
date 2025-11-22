@@ -1,0 +1,229 @@
+.pin-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: blur(22px) saturate(120%);
+  background: radial-gradient(circle at 20% 20%, rgba(255, 0, 60, 0.18), transparent 70%),
+    radial-gradient(circle at 80% 10%, rgba(99, 102, 241, 0.22), transparent 72%),
+    rgba(6, 8, 18, 0.78);
+  z-index: 2000;
+}
+
+.pin-box {
+  background: var(--app-surface);
+  padding: 36px 38px 42px;
+  border-radius: var(--app-radius-lg);
+  width: 420px;
+  max-width: 92vw;
+  text-align: center;
+  color: var(--app-text);
+  border: 1px solid var(--app-border-strong);
+  box-shadow: var(--app-shadow);
+  position: relative;
+}
+
+.pin-box::before {
+  content: "";
+  position: absolute;
+  inset: 14% 12%;
+  border-radius: var(--app-radius-md);
+  background: radial-gradient(circle, var(--app-primary-glow) 0%, transparent 70%);
+  opacity: 0.4;
+  filter: blur(24px);
+  pointer-events: none;
+}
+
+.pin-title {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.pin-helper {
+  margin-top: 8px;
+  font-size: 0.95rem;
+  color: var(--app-text-soft);
+}
+
+.pin-error {
+  margin-top: 12px;
+  padding: 0.65rem 0.9rem;
+  border-radius: var(--app-radius-sm);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  background: rgba(248, 113, 113, 0.16);
+  color: #fca5a5;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+/* PIN Display with Dots */
+.pin-display {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0 30px 0;
+  min-height: 48px;
+}
+
+.pin-dot {
+  font-size: 28px;
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(10, 12, 22, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: transform var(--app-transition), background var(--app-transition), border-color var(--app-transition);
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.pin-dot.filled {
+  background: linear-gradient(125deg, var(--app-primary), var(--app-accent));
+  border-color: rgba(255, 0, 60, 0.65);
+  color: #fff;
+  box-shadow: 0 0 18px rgba(255, 0, 60, 0.35);
+  transform: scale(1.06);
+}
+
+/* Numeric Keypad */
+.pin-keypad {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 18px 0 4px;
+}
+
+.keypad-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 18px;
+  border-radius: var(--app-radius-sm);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--app-text);
+  cursor: pointer;
+  transition: transform var(--app-transition), box-shadow var(--app-transition), border-color var(--app-transition);
+  box-shadow: var(--app-shadow-soft);
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.keypad-btn:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: var(--app-shadow);
+}
+
+.keypad-btn:active {
+  transform: translateY(0);
+  box-shadow: var(--app-shadow-soft);
+}
+
+.keypad-btn.clear-btn {
+  background: rgba(248, 113, 113, 0.14);
+  border-color: rgba(248, 113, 113, 0.32);
+  color: #fca5a5;
+  font-size: 20px;
+}
+
+.keypad-btn.clear-btn:hover {
+  background: rgba(248, 113, 113, 0.22);
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+.keypad-btn.backspace-btn {
+  background: rgba(249, 115, 22, 0.14);
+  border-color: rgba(249, 115, 22, 0.32);
+  color: #fb923c;
+  font-size: 22px;
+}
+
+.keypad-btn.backspace-btn:hover {
+  background: rgba(249, 115, 22, 0.22);
+  border-color: rgba(249, 115, 22, 0.45);
+}
+
+.pin-buttons {
+  margin-top: 32px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.pin-buttons button {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 14px 24px;
+  border-radius: var(--app-radius-sm);
+  cursor: pointer;
+  font-size: 0.98rem;
+  font-weight: 600;
+  transition: transform var(--app-transition), box-shadow var(--app-transition), border-color var(--app-transition), background var(--app-transition);
+  color: var(--app-text);
+  flex: 1;
+}
+
+.pin-buttons button:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: var(--app-shadow);
+}
+
+.pin-buttons button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pin-buttons .secondary {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.pin-buttons .secondary:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.pin-buttons button:not(.secondary) {
+  background: linear-gradient(125deg, var(--app-primary), var(--app-accent));
+  border-color: rgba(255, 0, 60, 0.52);
+}
+
+.pin-buttons button:not(.secondary):hover:not(:disabled) {
+  background: linear-gradient(125deg, var(--app-accent), var(--app-primary));
+  border-color: rgba(255, 0, 60, 0.65);
+  box-shadow: 0 12px 32px rgba(255, 0, 60, 0.35);
+}
+
+/* Responsive Design */
+@media (max-width: 500px) {
+  .pin-box {
+    padding: 28px 24px 32px;
+    width: 94vw;
+  }
+
+  .pin-dot {
+    width: 36px;
+    height: 36px;
+    font-size: 22px;
+  }
+
+  .keypad-btn {
+    padding: 16px;
+    font-size: 19px;
+  }
+
+  .pin-buttons button {
+    padding: 12px 18px;
+    font-size: 0.92rem;
+  }
+}
+

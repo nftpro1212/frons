@@ -1,0 +1,61 @@
+.table-select {
+  margin-bottom: 1.5rem;
+  padding: 1.2rem 1.5rem;
+  border-radius: 1.2rem;
+  background: rgba(255,255,255,0.08);
+  box-shadow: 0 4px 24px 0 rgba(31, 38, 135, 0.10);
+  backdrop-filter: blur(8px);
+}
+.table-select h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+.table-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+.table-btn {
+  min-width: 110px;
+  min-height: 70px;
+  font-size: 1.2rem;
+  font-weight: 600;
+  border: none;
+  border-radius: 1rem;
+  background: linear-gradient(135deg, #2b0a2b 0%, #ff003c 100%);
+  color: #fff;
+  box-shadow: 0 2px 8px 0 rgba(255,0,60,0.10);
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+  position: relative;
+}
+.table-btn.selected {
+  background: linear-gradient(135deg, #ff003c 0%, #2b0a2b 100%);
+  box-shadow: 0 4px 16px 0 rgba(255,0,60,0.18);
+  transform: scale(1.05);
+}
+.table-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.status-badge {
+  display: block;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  border-radius: 0.7rem;
+  padding: 0.2rem 0.7rem;
+  background: #fff2;
+  color: #fff;
+  font-weight: 500;
+}
+.status-badge.occupied {
+  background: #ff003c;
+}
+.status-badge.reserved {
+  background: #ffb300;
+  color: #2b0a2b;
+}
+.status-badge.free {
+  background: #00c853;
+}

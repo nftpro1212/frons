@@ -1,0 +1,381 @@
+.settings-container {
+  padding: 30px;
+  max-width: 900px;
+  margin: 0 auto;
+  background: #f5f5f5;
+  border-radius: 10px;
+}
+
+.settings-container h1 {
+  color: #333;
+  margin-bottom: 30px;
+  font-size: 28px;
+}
+
+.settings-tabs {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 30px;
+  border-bottom: 2px solid #ddd;
+}
+
+.tab-btn {
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 600;
+  color: #666;
+  border-bottom: 3px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.tab-btn:hover {
+  color: #2196F3;
+}
+
+.tab-btn.active {
+  color: #2196F3;
+  border-bottom-color: #2196F3;
+}
+
+.settings-content {
+  background: white;
+  padding: 30px;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  max-height: 600px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Scroll bar styling */
+.settings-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.settings-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.settings-content::-webkit-scrollbar-thumb {
+  background: #2196F3;
+  border-radius: 10px;
+  transition: background 0.3s ease;
+}
+
+.settings-content::-webkit-scrollbar-thumb:hover {
+  background: #1565C0;
+}
+
+.settings-panel {
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.settings-panel h2 {
+  color: #333;
+  margin-bottom: 20px;
+  font-size: 22px;
+  border-bottom: 2px solid #2196F3;
+  padding-bottom: 10px;
+}
+
+.settings-panel h3 {
+  color: #555;
+  margin-top: 20px;
+  margin-bottom: 15px;
+  font-size: 16px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  color: #333;
+  margin-bottom: 8px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group select {
+  padding: 12px;
+  border: 2px solid #ddd;
+  border-radius: 5px;
+  font-size: 14px;
+  transition: border-color 0.3s ease;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="number"]:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #2196F3;
+}
+
+.form-group input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: #2196F3;
+}
+
+.form-group label input[type="checkbox"] {
+  margin: 0;
+}
+
+.form-group label span {
+  cursor: pointer;
+  color: #333;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 600px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.printer-settings {
+  position: relative;
+}
+
+.printer-toggle {
+  background: #f9f9f9;
+  padding: 15px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  border-left: 4px solid #2196F3;
+}
+
+.printer-toggle label {
+  margin: 0;
+  flex-direction: row;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid #e0e0e0;
+  opacity: 0.5;
+}
+
+.settings-footer {
+  margin-top: 30px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.save-btn {
+  padding: 14px 32px;
+  background: linear-gradient(135deg, #2196F3, #1976D2);
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.save-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(33, 150, 243, 0.4);
+}
+
+.save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.save-message {
+  font-size: 16px;
+  font-weight: 600;
+  animation: popIn 0.3s ease;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Connection Status */
+.connection-status {
+  background: #f5f5f5;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border-left: 4px solid #2196F3;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.status-indicator.connected {
+  color: #4CAF50;
+}
+
+.status-indicator.disconnected {
+  color: #f44336;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+
+.status-indicator.connected .status-dot {
+  background: #4CAF50;
+}
+
+.status-indicator.disconnected .status-dot {
+  background: #f44336;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Network Settings */
+.network-settings {
+  background: #f9f9f9;
+  padding: 20px;
+  border-radius: 8px;
+  border: 2px solid #2196F3;
+  margin-bottom: 20px;
+}
+
+.network-settings h3 {
+  margin-top: 0;
+  color: #2196F3;
+}
+
+.network-settings small {
+  display: block;
+  color: #666;
+  margin-top: 5px;
+  font-size: 12px;
+  font-style: italic;
+}
+
+.test-buttons {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.test-connection-btn,
+.test-print-btn {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.test-connection-btn {
+  background: linear-gradient(135deg, #2196F3, #1565C0);
+  color: white;
+}
+
+.test-connection-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+}
+
+.test-print-btn {
+  background: linear-gradient(135deg, #FF9800, #F57C00);
+  color: white;
+}
+
+.test-print-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+}
+
+.test-connection-btn:disabled,
+.test-print-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 600px) {
+  .test-buttons {
+    flex-direction: column;
+  }
+
+  .test-buttons button {
+    width: 100%;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .settings-container {
+    padding: 20px;
+  }
+
+  .settings-content {
+    padding: 20px;
+  }
+
+  .settings-tabs {
+    flex-direction: column;
+  }
+
+  .settings-footer {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .save-btn {
+    width: 100%;
+  }
+}

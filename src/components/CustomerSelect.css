@@ -1,0 +1,13 @@
+.customer-select {
+  margin-bottom: 1.2rem;
+  padding: 1.2rem 1.5rem;
+  border-radius: 1.2rem;
+  background: rgba(255,255,255,0.08);
+  box-shadow: 0 4px 24px 0 rgba(31, 38, 135, 0.10);
+  backdrop-filter: blur(8px);
+}
+.customer-select h3 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  margin-bottom: 0.7rem;
+}

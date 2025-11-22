@@ -1,0 +1,110 @@
+.payments-shell {
+  gap: 28px;
+}
+
+.payments-summary-grid {
+  margin-top: -10px;
+}
+
+.payments-summary-label {
+  margin: 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--app-muted);
+}
+
+.payments-summary-value {
+  margin: 10px 0 0;
+  font-size: 1.8rem;
+}
+
+.payments-method-list {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--app-text);
+}
+
+.payments-method-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 0.95rem;
+}
+
+.payments-method-list strong {
+  color: var(--app-primary);
+  font-weight: 700;
+}
+
+.payments-table-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px;
+}
+
+.payments-table-card .table-scroll {
+  overflow: auto;
+  max-height: 540px;
+}
+
+.payments-table-card .table-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.payments-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 720px;
+}
+
+.payments-table thead th {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.payments-table tbody tr {
+  transition: background var(--app-transition);
+}
+
+.payments-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.payments-table tbody td {
+  font-size: 0.95rem;
+  vertical-align: top;
+}
+
+.payments-empty {
+  margin: 0 18px 22px;
+  text-align: center;
+  padding: 28px 12px;
+  border-radius: var(--app-radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px dashed var(--app-border-strong);
+  color: var(--app-muted);
+}
+
+@media (max-width: 1024px) {
+  .payments-summary-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .payments-table {
+    min-width: 560px;
+  }
+
+  .payments-summary-value {
+    font-size: 1.5rem;
+  }
+}
