@@ -282,6 +282,36 @@
   cursor: not-allowed;
 }
 
+.btn-secondary,
+.btn-danger {
+  padding: 0.6rem 1.15rem;
+  border-radius: var(--app-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--app-text);
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform var(--app-transition), box-shadow var(--app-transition), background var(--app-transition);
+}
+
+.btn-secondary:hover,
+.btn-danger:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.32);
+}
+
+.btn-secondary:disabled,
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-danger {
+  border-color: rgba(248, 113, 113, 0.45);
+  color: var(--app-danger);
+}
+
 .settings-footer {
   display: flex;
   justify-content: flex-end;
@@ -369,6 +399,209 @@
 .staff-table tbody td {
   padding: 0.85rem 1rem;
   font-size: 0.95rem;
+}
+
+.printer-settings-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+
+.printer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.printer-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 16px;
+  border-radius: var(--app-radius-md);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color var(--app-transition), transform var(--app-transition), background var(--app-transition);
+}
+
+.printer-card:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-1px);
+}
+
+.printer-card.active {
+  border-color: rgba(59, 130, 246, 0.55);
+  background: rgba(59, 130, 246, 0.12);
+}
+
+.printer-card.add {
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  border-style: dashed;
+  border-color: rgba(255, 255, 255, 0.24);
+}
+
+.printer-card.add:hover {
+  border-color: rgba(59, 130, 246, 0.65);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.printer-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.printer-card-name {
+  font-weight: 700;
+  font-size: 1rem;
+}
+
+.printer-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--app-muted);
+  font-size: 0.85rem;
+}
+
+.printer-status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.3);
+}
+
+.printer-status-dot.status-connected {
+  background: rgba(34, 197, 94, 0.9);
+}
+
+.printer-status-dot.status-testing {
+  background: rgba(250, 204, 21, 0.9);
+}
+
+.printer-status-dot.status-disconnected {
+  background: rgba(248, 113, 113, 0.9);
+}
+
+.printer-badge {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  background: rgba(34, 197, 94, 0.15);
+  border-radius: 999px;
+  color: #4ade80;
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.add-icon {
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.printer-detail {
+  border-radius: var(--app-radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(17, 25, 40, 0.55);
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.28);
+}
+
+.printer-detail.empty {
+  align-items: center;
+  justify-content: center;
+  min-height: 240px;
+  color: var(--app-muted);
+}
+
+.printer-detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.printer-detail-header h3 {
+  margin: 0;
+}
+
+.printer-detail-sub {
+  margin: 4px 0 0;
+  color: var(--app-muted);
+  font-size: 0.9rem;
+}
+
+.printer-detail-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.trigger-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.trigger-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--app-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--app-text);
+}
+
+.trigger-item input {
+  accent-color: var(--app-primary);
+}
+
+.printer-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.printer-status-label {
+  display: block;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--app-muted);
+  margin-bottom: 4px;
+}
+
+.printer-error {
+  padding: 0.9rem 1.1rem;
+  border-radius: var(--app-radius-sm);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  background: rgba(248, 113, 113, 0.12);
+  color: var(--app-danger);
+  font-weight: 600;
+}
+
+.printer-empty-state {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+  border: 1px dashed rgba(255, 255, 255, 0.18);
+  border-radius: var(--app-radius-lg);
+  padding: 24px;
+  background: rgba(17, 25, 40, 0.45);
 }
 
 .role-badge {

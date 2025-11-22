@@ -15,6 +15,7 @@ import Payments from "./pages/Payments.jsx";
 import Reports from "./pages/Reports.jsx";
 import Settings from "./pages/Settings.jsx";
 import Delivery from "./pages/Delivery.jsx";
+import Inventory from "./pages/Inventory.jsx";
 
 import Layout from "./layout/Layout.jsx";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
@@ -81,6 +82,7 @@ export default function App() {
         <Route path="/reports" element={<PrivateRoute><Reports /></PrivateRoute>} />
         <Route path="/settings" element={<PrivateRoute><Settings /></PrivateRoute>} />
         <Route path="/delivery" element={<PrivateRoute><Delivery /></PrivateRoute>} />
+        <Route path="/inventory" element={<PrivateRoute><Inventory /></PrivateRoute>} />
 
         {/* KASSA PANELI: faqat kassir va admin uchun */}
         <Route

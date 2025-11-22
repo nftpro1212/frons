@@ -10,6 +10,7 @@ import {
   FaCashRegister,
   FaShippingFast,
   FaCreditCard,
+  FaBoxes,
 } from "react-icons/fa";
 import { useAuth } from "../context/AuthContext.jsx";
 import "./Navbar.css";
@@ -19,6 +20,7 @@ const roleNav = {
     { label: "Dashboard", to: "/", icon: FaHome },
     { label: "Buyurtmalar", to: "/orders", icon: FaClipboardList },
     { label: "Menyu", to: "/menu", icon: FaUtensils },
+    { label: "Ombor", to: "/inventory", icon: FaBoxes },
     { label: "Stollar", to: "/tables", icon: FaTable },
     { label: "To‘lovlar", to: "/payments", icon: FaCashRegister },
     { label: "Hisobotlar", to: "/reports", icon: FaChartLine },

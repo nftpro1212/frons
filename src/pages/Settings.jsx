@@ -2,6 +2,189 @@ import api from "../shared/api";
 import React, { useEffect, useState } from "react";
 import "./Settings.css";
 
+const PRINTER_TRIGGER_OPTIONS = [
+  { value: "payment", label: "To'lov yopilganda" },
+  { value: "order-open", label: "Buyurtma yaratilganda" },
+  { value: "order-update", label: "Buyurtma yangilanganda" },
+  { value: "kitchen", label: "Oshxona buyurtmasi" },
+  { value: "delivery", label: "Dostavka" },
+  { value: "test", label: "Test chop" },
+];
+
+const BASE_PRINTER_SETTINGS = {
+  enabled: true,
+  connectionType: "network",
+  printerName: "Receipt Printer",
+  ipAddress: "192.168.1.100",
+  port: 9100,
+  paperWidth: "80mm",
+  printerType: "thermal",
+  autoprint: false,
+  printCopies: 1,
+  printLogo: true,
+  printRestaurantName: true,
+  printTableNumber: true,
+  printWaiterName: true,
+  printTimestamp: true,
+  printPaymentMethod: true,
+  printQRCode: false,
+  headerText: "ZarPOS Restoran",
+  footerText: "Raxmat, qayta ko'ring!",
+  lastTestPrintDate: null,
+  lastPrintDate: null,
+  lastPrintError: "",
+  connectionStatus: "disconnected",
+  printers: [],
+  defaultPrinterId: "",
+  receiptTemplate: {
+    fontFamily: "monospace",
+    fontSize: 13,
+    headerAlign: "center",
+    bodyAlign: "left",
+    footerAlign: "center",
+    accentSymbol: "-",
+    dividerStyle: "dashed",
+    boldTotals: true,
+    showLogo: true,
+    showTaxBreakdown: true,
+    showDiscount: true,
+    showQr: false,
+    qrLabel: "",
+    qrValue: "",
+    lineHeight: 1.45,
+    columnsLayout: "two-column",
+    customMessage: "",
+  },
+};
+
+const BASE_PRINTER_DEVICE = {
+  name: "Yangi printer",
+  role: "front",
+  location: "",
+  connectionType: "network",
+  ipAddress: "",
+  port: 9100,
+  paperWidth: "80mm",
+  printerType: "thermal",
+  autoprint: false,
+  autoPrintTriggers: ["payment"],
+  copies: 1,
+  headerText: "",
+  footerText: "",
+  logoUrl: "",
+  templateOverrides: {},
+  enabled: true,
+  connectionStatus: "disconnected",
+  lastTestPrintDate: null,
+  lastConnectionTest: null,
+  lastPrintDate: null,
+  lastPrintError: "",
+  note: "",
+};
+
+const createClientId = () => `client-${Math.random().toString(36).slice(2, 10)}`;
+
+const isValidObjectId = (value) => typeof value === "string" && /^[a-fA-F0-9]{24}$/.test(value);
+
+const normalizePrinter = (printer = {}, index = 0) => {
+  const normalized = {
+    ...BASE_PRINTER_DEVICE,
+    ...printer,
+  };
+
+  normalized.autoPrintTriggers = Array.isArray(normalized.autoPrintTriggers) && normalized.autoPrintTriggers.length
+    ? Array.from(new Set(normalized.autoPrintTriggers))
+    : ["payment"];
+
+  normalized.templateOverrides = normalized.templateOverrides || {};
+
+  normalized.port = Number(normalized.port) || 9100;
+  normalized.copies = Math.max(1, Number(normalized.copies) || 1);
+
+  const idFromDoc = normalized._id ? normalized._id.toString() : "";
+  normalized.clientId = idFromDoc || createClientId();
+
+  if (!normalized.name || normalized.name === BASE_PRINTER_DEVICE.name) {
+    normalized.name = `Printer ${index + 1}`;
+  }
+
+  return normalized;
+};
+
+const normalizeSettingsData = (data = {}) => {
+  const printerSettings = {
+    ...BASE_PRINTER_SETTINGS,
+    ...(data.printerSettings || {}),
+  };
+
+  const printers = Array.isArray(printerSettings.printers)
+    ? printerSettings.printers.map((printer, index) => normalizePrinter(printer, index))
+    : [];
+
+  const defaultPrinterId = printerSettings.defaultPrinterId
+    ? printerSettings.defaultPrinterId.toString()
+    : "";
+
+  return {
+    ...data,
+    printerSettings: {
+      ...printerSettings,
+      printers,
+      defaultPrinterId,
+    },
+  };
+};
+
+const sanitizeSettingsForSave = (currentSettings) => {
+  const payload = {
+    ...currentSettings,
+    printerSettings: currentSettings.printerSettings
+      ? {
+          ...currentSettings.printerSettings,
+          printers: (currentSettings.printerSettings.printers || []).map((printer) => {
+            const {
+              clientId,
+              connectionStatus,
+              lastTestPrintDate,
+              lastConnectionTest,
+              lastPrintDate,
+              lastPrintError,
+              ...rest
+            } = printer;
+            const cleaned = {
+              ...rest,
+              port: Number(rest.port) || 9100,
+              copies: Math.max(1, Number(rest.copies) || 1),
+              autoPrintTriggers:
+                Array.isArray(rest.autoPrintTriggers) && rest.autoPrintTriggers.length
+                  ? Array.from(new Set(rest.autoPrintTriggers))
+                  : ["payment"],
+              templateOverrides: rest.templateOverrides || {},
+            };
+            return cleaned;
+          }),
+        }
+      : undefined,
+  };
+
+  if (payload.printerSettings && !isValidObjectId(payload.printerSettings.defaultPrinterId)) {
+    delete payload.printerSettings.defaultPrinterId;
+  }
+
+  return payload;
+};
+
+const formatDateTime = (value) => {
+  if (!value) return "—";
+  try {
+    const dateValue = value instanceof Date ? value : new Date(value);
+    if (Number.isNaN(dateValue.getTime())) return "—";
+    return dateValue.toLocaleString("uz-UZ");
+  } catch (err) {
+    return "—";
+  }
+};
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
     // Umumiy
@@ -129,6 +312,7 @@ export default function SettingsPage() {
   const [testingConnection, setTestingConnection] = useState(false);
   const [testingPrint, setTestingPrint] = useState(false);
   const [testingTaxIntegration, setTestingTaxIntegration] = useState(false);
+  const [selectedPrinterId, setSelectedPrinterId] = useState("");
   const saveMessageTone = saveMessage.startsWith("✅") ? "success" : saveMessage.startsWith("❌") ? "danger" : "info";
   
   // Staff management states
@@ -148,12 +332,44 @@ export default function SettingsPage() {
     }
   }, [activeTab]);
 
+  useEffect(() => {
+    const printers = settings.printerSettings?.printers || [];
+    if (!printers.length) {
+      if (selectedPrinterId) {
+        setSelectedPrinterId("");
+      }
+      return;
+    }
+
+    const exists = printers.some((printer) => {
+      const id = printer.clientId || printer._id?.toString();
+      return id === selectedPrinterId;
+    });
+
+    if (!exists) {
+      const nextId = printers[0].clientId || printers[0]._id?.toString() || "";
+      if (nextId) {
+        setSelectedPrinterId(nextId);
+      }
+    }
+  }, [settings.printerSettings?.printers, selectedPrinterId]);
+
   const fetchSettings = async () => {
     try {
       setLoading(true);
       const res = await api.get("/settings");
       if (res.data) {
-        setSettings(res.data);
+        const normalized = normalizeSettingsData(res.data);
+        setSettings(normalized);
+
+        const printerSettings = normalized.printerSettings || {};
+        const printers = printerSettings.printers || [];
+        const defaultId = printerSettings.defaultPrinterId;
+        const fallbackId = printers[0]?.clientId || "";
+        const resolvedId = printers.find((printer) => printer.clientId === defaultId || printer._id?.toString() === defaultId)
+          ? defaultId
+          : fallbackId;
+        setSelectedPrinterId(resolvedId || "");
       }
     } catch (error) {
       console.error("Sozlamalarni yuklashda xato:", error);
@@ -175,7 +391,9 @@ export default function SettingsPage() {
   const saveSettings = async () => {
     try {
       setLoading(true);
-      await api.put("/settings", settings);
+      const payload = sanitizeSettingsForSave(settings);
+      await api.put("/settings", payload);
+      await fetchSettings();
       setSaveMessage("✅ Sozlamalar muvaffaqiyatli saqlandi!");
       setTimeout(() => setSaveMessage(""), 3000);
     } catch (error) {
@@ -187,17 +405,77 @@ export default function SettingsPage() {
   };
 
   const testPrinterConnection = async () => {
+    const printers = settings.printerSettings?.printers || [];
+    const activePrinter = printers.find(
+      (printer) => printer.clientId === selectedPrinterId || printer._id?.toString() === selectedPrinterId
+    ) || printers[0];
+
+    if (!activePrinter) {
+      setSaveMessage("❌ Printer tanlanmagan");
+      setTimeout(() => setSaveMessage(""), 3000);
+      return;
+    }
+
     try {
       setTestingConnection(true);
       const response = await api.post("/settings/test-printer-connection", {
-        ipAddress: settings.printer.ipAddress,
-        port: settings.printer.port
+        printerId: activePrinter._id,
+        ipAddress: activePrinter.ipAddress,
+        port: activePrinter.port,
       });
       setSaveMessage(`✅ ${response.data.message}`);
-      updateSettings("printer", { ...settings.printer, connectionStatus: "connected" });
+      const nowIso = new Date().toISOString();
+      setSettings((prev) => {
+        const nextPrinters = (prev.printerSettings?.printers || []).map((printer) => {
+          const isMatch = printer.clientId === activePrinter.clientId || printer._id?.toString() === activePrinter._id?.toString();
+          if (!isMatch) return printer;
+          return {
+            ...printer,
+            connectionStatus: "connected",
+            lastConnectionTest: nowIso,
+            ipAddress: activePrinter.ipAddress,
+            port: activePrinter.port,
+          };
+        });
+
+        return {
+          ...prev,
+          printerSettings: {
+            ...prev.printerSettings,
+            connectionStatus: "connected",
+            lastConnectionTest: nowIso,
+            ipAddress: activePrinter.ipAddress,
+            port: activePrinter.port,
+            printers: nextPrinters,
+          },
+        };
+      });
     } catch (error) {
       setSaveMessage(`❌ ${error.response?.data?.message || "Printerga ulanib bo'lmadi"}`);
-      updateSettings("printer", { ...settings.printer, connectionStatus: "disconnected" });
+      const nowIso = new Date().toISOString();
+      setSettings((prev) => {
+        const nextPrinters = (prev.printerSettings?.printers || []).map((printer) => {
+          const isMatch = printer.clientId === activePrinter.clientId || printer._id?.toString() === activePrinter._id?.toString();
+          if (!isMatch) return printer;
+          return {
+            ...printer,
+            connectionStatus: "disconnected",
+            lastConnectionTest: nowIso,
+            lastPrintError: error.response?.data?.message || error.message || "Aloqa xatosi",
+          };
+        });
+
+        return {
+          ...prev,
+          printerSettings: {
+            ...prev.printerSettings,
+            connectionStatus: "disconnected",
+            lastConnectionTest: nowIso,
+            lastPrintError: error.response?.data?.message || error.message || "Aloqa xatosi",
+            printers: nextPrinters,
+          },
+        };
+      });
     } finally {
       setTestingConnection(false);
       setTimeout(() => setSaveMessage(""), 4000);
@@ -205,12 +483,72 @@ export default function SettingsPage() {
   };
 
   const testPrintCheck = async () => {
+    const printers = settings.printerSettings?.printers || [];
+    const activePrinter = printers.find(
+      (printer) => printer.clientId === selectedPrinterId || printer._id?.toString() === selectedPrinterId
+    ) || printers[0];
+
+    if (!activePrinter) {
+      setSaveMessage("❌ Printer tanlanmagan");
+      setTimeout(() => setSaveMessage(""), 3000);
+      return;
+    }
+
     try {
       setTestingPrint(true);
-      const response = await api.post("/settings/test-print-check");
+      const response = await api.post("/settings/test-print-check", {
+        printerId: activePrinter._id,
+        ipAddress: activePrinter.ipAddress,
+        port: activePrinter.port,
+      });
       setSaveMessage(`✅ ${response.data.message}`);
+      const nowIso = new Date().toISOString();
+      setSettings((prev) => {
+        const nextPrinters = (prev.printerSettings?.printers || []).map((printer) => {
+          const isMatch = printer.clientId === activePrinter.clientId || printer._id?.toString() === activePrinter._id?.toString();
+          if (!isMatch) return printer;
+          return {
+            ...printer,
+            connectionStatus: "connected",
+            lastTestPrintDate: nowIso,
+            lastPrintDate: nowIso,
+            lastPrintError: "",
+          };
+        });
+
+        return {
+          ...prev,
+          printerSettings: {
+            ...prev.printerSettings,
+            lastTestPrintDate: nowIso,
+            lastPrintDate: nowIso,
+            lastPrintError: "",
+            printers: nextPrinters,
+          },
+        };
+      });
     } catch (error) {
       setSaveMessage(`❌ ${error.response?.data?.message || "Chekni chop qilib bo'lmadi"}`);
+      setSettings((prev) => {
+        const nextPrinters = (prev.printerSettings?.printers || []).map((printer) => {
+          const isMatch = printer.clientId === activePrinter.clientId || printer._id?.toString() === activePrinter._id?.toString();
+          if (!isMatch) return printer;
+          return {
+            ...printer,
+            connectionStatus: "disconnected",
+            lastPrintError: error.response?.data?.message || error.message || "Chek chop xatosi",
+          };
+        });
+
+        return {
+          ...prev,
+          printerSettings: {
+            ...prev.printerSettings,
+            lastPrintError: error.response?.data?.message || error.message || "Chek chop xatosi",
+            printers: nextPrinters,
+          },
+        };
+      });
     } finally {
       setTestingPrint(false);
       setTimeout(() => setSaveMessage(""), 4000);
@@ -251,6 +589,170 @@ export default function SettingsPage() {
         [field]: value
       }
     }));
+  };
+
+  const updatePrinter = (printerId, updater) => {
+    setSettings((prev) => {
+      const prevPrinters = prev.printerSettings?.printers || [];
+      const nextPrinters = prevPrinters.map((printer, index) => {
+        const candidateId = printer.clientId || printer._id?.toString();
+        if (candidateId !== printerId) return printer;
+
+        const patch = typeof updater === "function" ? updater(printer, index) : updater;
+        const updated = { ...printer, ...patch };
+
+        updated.autoPrintTriggers = Array.isArray(updated.autoPrintTriggers) && updated.autoPrintTriggers.length
+          ? Array.from(new Set(updated.autoPrintTriggers))
+          : ["payment"];
+        updated.templateOverrides = updated.templateOverrides || {};
+        updated.port = Number(updated.port) || 9100;
+        updated.copies = Math.max(1, Number(updated.copies) || 1);
+
+        if (!updated.name) {
+          updated.name = printer.name || `Printer ${index + 1}`;
+        }
+
+        return updated;
+      });
+
+      return {
+        ...prev,
+        printerSettings: {
+          ...prev.printerSettings,
+          printers: nextPrinters,
+        },
+      };
+    });
+  };
+
+  const handlePrinterFieldChange = (printerId, field, value) => {
+    updatePrinter(printerId, { [field]: value });
+  };
+
+  const handleTemplateOverrideChange = (printerId, field, value) => {
+    updatePrinter(printerId, (printer) => ({
+      templateOverrides: {
+        ...printer.templateOverrides,
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleReceiptTemplateChange = (field, value) => {
+    setSettings((prev) => ({
+      ...prev,
+      printerSettings: {
+        ...prev.printerSettings,
+        receiptTemplate: {
+          ...(prev.printerSettings?.receiptTemplate || {}),
+          [field]: value,
+        },
+      },
+    }));
+  };
+
+  const togglePrinterTrigger = (printerId, trigger) => {
+    updatePrinter(printerId, (printer) => {
+      const current = Array.isArray(printer.autoPrintTriggers) ? [...printer.autoPrintTriggers] : [];
+      const hasTrigger = current.includes(trigger);
+      const nextTriggers = hasTrigger ? current.filter((value) => value !== trigger) : [...current, trigger];
+      return {
+        autoPrintTriggers: nextTriggers.length ? nextTriggers : ["payment"],
+      };
+    });
+  };
+
+  const handleAddPrinter = () => {
+    let createdPrinter = null;
+    setSettings((prev) => {
+      const prevPrinters = prev.printerSettings?.printers || [];
+      createdPrinter = normalizePrinter(
+        {
+          ...BASE_PRINTER_DEVICE,
+          name: `Printer ${prevPrinters.length + 1}`,
+          headerText: prev.printerSettings?.headerText || "",
+          footerText: prev.printerSettings?.footerText || "",
+        },
+        prevPrinters.length
+      );
+
+      return {
+        ...prev,
+        printerSettings: {
+          ...prev.printerSettings,
+          printers: [...prevPrinters, createdPrinter],
+        },
+      };
+    });
+
+    if (createdPrinter) {
+      setSelectedPrinterId(createdPrinter.clientId);
+    }
+  };
+
+  const handleRemovePrinter = (printerId) => {
+    let nextSelectedId = "";
+
+    setSettings((prev) => {
+      const prevPrinters = prev.printerSettings?.printers || [];
+      if (prevPrinters.length <= 1) {
+        return prev;
+      }
+
+      const nextPrinters = prevPrinters.filter((printer) => {
+        const candidateId = printer.clientId || printer._id?.toString();
+        return candidateId !== printerId;
+      });
+
+      const removedWasDefault = prev.printerSettings?.defaultPrinterId
+        ? prev.printerSettings.defaultPrinterId === printerId || prev.printerSettings.defaultPrinterId === prevPrinters.find((printer) => (printer.clientId || printer._id?.toString()) === printerId)?._id?.toString()
+        : false;
+
+      const nextDefaultId = removedWasDefault ? "" : prev.printerSettings?.defaultPrinterId;
+
+      nextSelectedId = (() => {
+        if (!nextPrinters.length) return "";
+        const currentSelected = selectedPrinterId;
+        const stillExists = nextPrinters.find((printer) => {
+          const id = printer.clientId || printer._id?.toString();
+          return id === currentSelected;
+        });
+        if (stillExists) return currentSelected;
+        return nextPrinters[0].clientId || nextPrinters[0]._id?.toString() || "";
+      })();
+
+      return {
+        ...prev,
+        printerSettings: {
+          ...prev.printerSettings,
+          printers: nextPrinters,
+          defaultPrinterId: nextDefaultId,
+        },
+      };
+    });
+
+    setSelectedPrinterId(nextSelectedId);
+  };
+
+  const handleSelectPrinter = (printerId) => {
+    setSelectedPrinterId(printerId);
+  };
+
+  const handleSetDefaultPrinter = (printer) => {
+    if (!printer?._id) {
+      setSaveMessage("❌ Avval printerni saqlang, so'ng default qilib belgilang");
+      setTimeout(() => setSaveMessage(""), 3000);
+      return;
+    }
+    const idString = printer._id.toString();
+    setSettings((prev) => ({
+      ...prev,
+      printerSettings: {
+        ...prev.printerSettings,
+        defaultPrinterId: idString,
+      },
+    }));
+    setSelectedPrinterId(printer.clientId || idString);
   };
 
   // Staff Management Functions
@@ -419,166 +921,426 @@ export default function SettingsPage() {
     </div>
   );
 
-  const renderPrinterSettings = () => (
-    <div className="settings-panel">
-      <h2>🖨️ Printer Sozlamalar</h2>
-      
-      <div className="toggle-section">
-        <label className="toggle-label">
-          <input
-            type="checkbox"
-            checked={settings.printer?.enabled || false}
-            onChange={(e) => handleChange("printer", "enabled", e.target.checked)}
-          />
-          <span className="toggle-switch"></span>
-          <span>Printerni Faollashtirish</span>
-        </label>
+  const renderPrinterSettings = () => {
+    const printerSettings = settings.printerSettings || BASE_PRINTER_SETTINGS;
+    const printers = printerSettings.printers || [];
+    const activePrinter = printers.find((printer) => {
+      const id = printer.clientId || printer._id?.toString();
+      return id === selectedPrinterId;
+    }) || printers[0];
+
+    const activePrinterId = activePrinter ? activePrinter.clientId || activePrinter._id?.toString() : "";
+    const templateOverrides = activePrinter?.templateOverrides || {};
+    const triggers = activePrinter?.autoPrintTriggers || [];
+    const canRemovePrinter = printers.length > 1;
+
+    return (
+      <div className="settings-panel">
+        <h2>🖨️ Printer Sozlamalar</h2>
+
+        <div className="toggle-section">
+          <label className="toggle-label">
+            <input
+              type="checkbox"
+              checked={printerSettings.enabled || false}
+              onChange={(e) => handleChange("printerSettings", "enabled", e.target.checked)}
+            />
+            <span className="toggle-switch"></span>
+            <span>Printerni Faollashtirish</span>
+          </label>
+
+          <label className="toggle-label">
+            <input
+              type="checkbox"
+              checked={printerSettings.autoprint || false}
+              onChange={(e) => handleChange("printerSettings", "autoprint", e.target.checked)}
+            />
+            <span className="toggle-switch"></span>
+            <span>To'lovdan so'ng avtomatik chek ochish</span>
+          </label>
+
+          <label className="toggle-label">
+            <input
+              type="checkbox"
+              checked={printerSettings.printLogo || false}
+              onChange={(e) => handleChange("printerSettings", "printLogo", e.target.checked)}
+            />
+            <span className="toggle-switch"></span>
+            <span>Logotipni Ko'rsatish</span>
+          </label>
+
+          <label className="toggle-label">
+            <input
+              type="checkbox"
+              checked={printerSettings.printPaymentMethod || false}
+              onChange={(e) => handleChange("printerSettings", "printPaymentMethod", e.target.checked)}
+            />
+            <span className="toggle-switch"></span>
+            <span>To'lov turini chiqarish</span>
+          </label>
+        </div>
+
+        <div className="form-grid">
+          <div className="form-group">
+            <label>Umumiy chek sarlavhasi</label>
+            <input
+              type="text"
+              value={printerSettings.headerText || ""}
+              onChange={(e) => handleChange("printerSettings", "headerText", e.target.value)}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Umumiy pastki matn</label>
+            <input
+              type="text"
+              value={printerSettings.footerText || ""}
+              onChange={(e) => handleChange("printerSettings", "footerText", e.target.value)}
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Bo'luvchi belgisi</label>
+            <input
+              type="text"
+              maxLength={1}
+              value={printerSettings.receiptTemplate?.accentSymbol || "-"}
+              onChange={(e) => handleReceiptTemplateChange("accentSymbol", (e.target.value || "-").slice(0, 1))}
+            />
+          </div>
+
+          <div className="form-group full-width">
+            <label>Umumiy chek xabari</label>
+            <input
+              type="text"
+              value={printerSettings.receiptTemplate?.customMessage || ""}
+              onChange={(e) => handleReceiptTemplateChange("customMessage", e.target.value)}
+              placeholder="Masalan: Har kuni 10:00-12:00 oralig'ida 10% chegirma"
+            />
+          </div>
+        </div>
+
+        {printerSettings.enabled ? (
+          printers.length ? (
+            <div className="printer-settings-layout">
+              <aside className="printer-list">
+                {printers.map((printer) => {
+                  const id = printer.clientId || printer._id?.toString();
+                  const isActive = id === activePrinterId;
+                  const isDefault =
+                    printer._id && printerSettings.defaultPrinterId && printer._id.toString() === printerSettings.defaultPrinterId;
+
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      className={`printer-card${isActive ? " active" : ""}`}
+                      onClick={() => handleSelectPrinter(id)}
+                    >
+                      <div className="printer-card-head">
+                        <span className="printer-card-name">{printer.name}</span>
+                        <span className={`printer-status-dot status-${printer.connectionStatus || "disconnected"}`}></span>
+                      </div>
+                      <div className="printer-card-meta">
+                        <span>{printer.role === "front" ? "Oldingi zal" : printer.role === "kitchen" ? "Oshxona" : printer.role === "bar" ? "Bar" : printer.role === "delivery" ? "Dostavka" : "Custom"}</span>
+                        <span>{printer.connectionType === "network" ? printer.ipAddress || "IP aniqlanmagan" : printer.connectionType.toUpperCase()}</span>
+                      </div>
+                      {isDefault && <span className="printer-badge">Default</span>}
+                    </button>
+                  );
+                })}
+
+                <button type="button" className="printer-card add" onClick={handleAddPrinter}>
+                  <span className="add-icon">+</span>
+                  <span>Printer qo'shish</span>
+                </button>
+              </aside>
+
+              {activePrinter ? (
+                <div className="printer-detail">
+                  <div className="printer-detail-header">
+                    <div>
+                      <h3>{activePrinter.name}</h3>
+                      <p className="printer-detail-sub">
+                        {activePrinter.connectionType === "network"
+                          ? `${activePrinter.ipAddress || "IP belgilanmagan"}:${activePrinter.port}`
+                          : activePrinter.connectionType.toUpperCase()}
+                      </p>
+                    </div>
+                    <div className="printer-detail-actions">
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        disabled={!activePrinter._id}
+                        onClick={() => handleSetDefaultPrinter(activePrinter)}
+                      >
+                        Default qilish
+                      </button>
+                      {canRemovePrinter && (
+                        <button
+                          type="button"
+                          className="btn-danger"
+                          onClick={() => handleRemovePrinter(activePrinterId)}
+                        >
+                          O'chirish
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label>Printer nomi</label>
+                      <input
+                        type="text"
+                        value={activePrinter.name || ""}
+                        onChange={(e) => handlePrinterFieldChange(activePrinterId, "name", e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Vazifa</label>
+                      <select
+                        value={activePrinter.role || "front"}
+                        onChange={(e) => handlePrinterFieldChange(activePrinterId, "role", e.target.value)}
+                      >
+                        <option value="front">Oldingi zal</option>
+                        <option value="kitchen">Oshxona</option>
+                        <option value="bar">Bar</option>
+                        <option value="delivery">Dostavka</option>
+                        <option value="custom">Custom</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Joylashuv</label>
+                      <input
+                        type="text"
+                        value={activePrinter.location || ""}
+                        onChange={(e) => handlePrinterFieldChange(activePrinterId, "location", e.target.value)}
+                      />
+                    </div>
+
+                    <div className="form-group">
+                      <label>Ulanish turi</label>
+                      <select
+                        value={activePrinter.connectionType || "network"}
+                        onChange={(e) => handlePrinterFieldChange(activePrinterId, "connectionType", e.target.value)}
+                      >
+                        <option value="network">Network (IP)</option>
+                        <option value="usb">USB</option>
+                        <option value="bluetooth">Bluetooth</option>
+                      </select>
+                    </div>
+
+                    {activePrinter.connectionType === "network" && (
+                      <>
+                        <div className="form-group">
+                          <label>IP manzil</label>
+                          <input
+                            type="text"
+                            value={activePrinter.ipAddress || ""}
+                            onChange={(e) => handlePrinterFieldChange(activePrinterId, "ipAddress", e.target.value)}
+                          />
+                        </div>
+                        <div className="form-group">
+                          <label>Port</label>
+                          <input
+                            type="number"
+                            value={activePrinter.port || 9100}
+                            onChange={(e) => handlePrinterFieldChange(activePrinterId, "port", parseInt(e.target.value, 10) || 9100)}
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    <div className="form-group">
+                      <label>Qog'oz kengligi</label>
+                      <select
+                        value={activePrinter.paperWidth || "80mm"}
+                        onChange={(e) => handlePrinterFieldChange(activePrinterId, "paperWidth", e.target.value)}
+                      >
+                        <option value="58mm">58mm</option>
+                        <option value="80mm">80mm</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Printer turi</label>
+                      <select
+                        value={activePrinter.printerType || "thermal"}
+                        onChange={(e) => handlePrinterFieldChange(activePrinterId, "printerType", e.target.value)}
+                      >
+                        <option value="thermal">Thermal</option>
+                        <option value="inkjet">Inkjet</option>
+                        <option value="laser">Laser</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Nusxalar soni</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="5"
+                        value={activePrinter.copies || 1}
+                        onChange={(e) => handlePrinterFieldChange(activePrinterId, "copies", parseInt(e.target.value, 10) || 1)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-grid">
+                    <div className="form-group full-width">
+                      <label>Chek sarlavhasi (override)</label>
+                      <input
+                        type="text"
+                        value={activePrinter.headerText || ""}
+                        onChange={(e) => handlePrinterFieldChange(activePrinterId, "headerText", e.target.value)}
+                        placeholder={printerSettings.headerText}
+                      />
+                    </div>
+
+                    <div className="form-group full-width">
+                      <label>Chek pastki matni (override)</label>
+                      <input
+                        type="text"
+                        value={activePrinter.footerText || ""}
+                        onChange={(e) => handlePrinterFieldChange(activePrinterId, "footerText", e.target.value)}
+                        placeholder={printerSettings.footerText}
+                      />
+                    </div>
+
+                    <div className="form-group full-width">
+                      <label>Chek qo'shimcha xabari</label>
+                      <textarea
+                        rows={3}
+                        value={templateOverrides.customMessage || ""}
+                        onChange={(e) => handleTemplateOverrideChange(activePrinterId, "customMessage", e.target.value)}
+                        placeholder="Masalan: Har kuni 10:00-12:00 oralig'ida 10% chegirma!"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="toggle-section">
+                    <label className="toggle-label">
+                      <input
+                        type="checkbox"
+                        checked={activePrinter.enabled !== false}
+                        onChange={(e) => handlePrinterFieldChange(activePrinterId, "enabled", e.target.checked)}
+                      />
+                      <span className="toggle-switch"></span>
+                      <span>Printer faol</span>
+                    </label>
+
+                    <label className="toggle-label">
+                      <input
+                        type="checkbox"
+                        checked={activePrinter.autoprint || false}
+                        onChange={(e) => handlePrinterFieldChange(activePrinterId, "autoprint", e.target.checked)}
+                      />
+                      <span className="toggle-switch"></span>
+                      <span>Avtomatik chop</span>
+                    </label>
+
+                    <div className="trigger-grid">
+                      {PRINTER_TRIGGER_OPTIONS.map((option) => (
+                        <label key={option.value} className="trigger-item">
+                          <input
+                            type="checkbox"
+                            checked={triggers.includes(option.value)}
+                            onChange={() => togglePrinterTrigger(activePrinterId, option.value)}
+                          />
+                          <span>{option.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="form-grid">
+                    <div className="form-group">
+                      <label>Bo'luvchi uslubi</label>
+                      <select
+                        value={templateOverrides.dividerStyle || printerSettings.receiptTemplate?.dividerStyle || "dashed"}
+                        onChange={(e) => handleTemplateOverrideChange(activePrinterId, "dividerStyle", e.target.value)}
+                      >
+                        <option value="dashed">Chiziqli</option>
+                        <option value="solid">Qalin</option>
+                        <option value="double">Ikki chiziq</option>
+                        <option value="accent">Belgilangan</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label>Qalin jami</label>
+                      <select
+                        value={(templateOverrides.boldTotals ?? printerSettings.receiptTemplate?.boldTotals) ? "true" : "false"}
+                        onChange={(e) => handleTemplateOverrideChange(activePrinterId, "boldTotals", e.target.value === "true")}
+                      >
+                        <option value="true">Ha</option>
+                        <option value="false">Yo'q</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="printer-status-grid">
+                    <div>
+                      <span className="printer-status-label">Oxirgi ulanish testi</span>
+                      <strong>{formatDateTime(activePrinter.lastConnectionTest || printerSettings.lastConnectionTest)}</strong>
+                    </div>
+                    <div>
+                      <span className="printer-status-label">Oxirgi test cheki</span>
+                      <strong>{formatDateTime(activePrinter.lastTestPrintDate || printerSettings.lastTestPrintDate)}</strong>
+                    </div>
+                    <div>
+                      <span className="printer-status-label">Oxirgi real chop</span>
+                      <strong>{formatDateTime(activePrinter.lastPrintDate || printerSettings.lastPrintDate)}</strong>
+                    </div>
+                  </div>
+
+                  {activePrinter.lastPrintError && (
+                    <div className="printer-error">
+                      ❗ {activePrinter.lastPrintError}
+                    </div>
+                  )}
+
+                  <div className="button-group">
+                    <button
+                      type="button"
+                      className="btn-test"
+                      onClick={testPrinterConnection}
+                      disabled={testingConnection}
+                    >
+                      {testingConnection ? "Tekshirilmoqda..." : "🔌 Ulanishni tekshirish"}
+                    </button>
+
+                    <button
+                      type="button"
+                      className="btn-test"
+                      onClick={testPrintCheck}
+                      disabled={testingPrint}
+                    >
+                      {testingPrint ? "Chop qilinyapti..." : "🖨️ Test chek"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="printer-detail empty">
+                  <p>Printer tanlanmagan.</p>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="printer-empty-state">
+              <p>Hali printer qo'shilmagan.</p>
+              <button type="button" className="btn-secondary" onClick={handleAddPrinter}>
+                Printer qo'shish
+              </button>
+            </div>
+          )
+        ) : null}
       </div>
-
-      {settings.printer?.enabled && (
-        <>
-          <div className="connection-status">
-            <div className={`status-badge ${settings.printer?.connectionStatus === "connected" ? "success" : "error"}`}>
-              {settings.printer?.connectionStatus === "connected" ? "✅ Ulangan" : "❌ Ulanmagan"}
-            </div>
-          </div>
-
-          <div className="form-grid">
-            <div className="form-group">
-              <label>Ulanish Turi</label>
-              <select
-                value={settings.printer?.connectionType || "network"}
-                onChange={(e) => handleChange("printer", "connectionType", e.target.value)}
-              >
-                <option value="network">🌐 Network (IP)</option>
-                <option value="usb">🔌 USB</option>
-                <option value="bluetooth">📱 Bluetooth</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Printer Nomi</label>
-              <input
-                type="text"
-                placeholder="Printer nomi"
-                value={settings.printer?.printerName || ""}
-                onChange={(e) => handleChange("printer", "printerName", e.target.value)}
-              />
-            </div>
-
-            {settings.printer?.connectionType === "network" && (
-              <>
-                <div className="form-group">
-                  <label>IP Address</label>
-                  <input
-                    type="text"
-                    placeholder="192.168.1.100"
-                    value={settings.printer?.ipAddress || ""}
-                    onChange={(e) => handleChange("printer", "ipAddress", e.target.value)}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label>Port</label>
-                  <input
-                    type="number"
-                    placeholder="9100"
-                    value={settings.printer?.port || 9100}
-                    onChange={(e) => handleChange("printer", "port", parseInt(e.target.value))}
-                  />
-                </div>
-              </>
-            )}
-
-            <div className="form-group">
-              <label>Qog'oz Kengligi</label>
-              <select
-                value={settings.printer?.paperWidth || "80mm"}
-                onChange={(e) => handleChange("printer", "paperWidth", e.target.value)}
-              >
-                <option value="58mm">58mm</option>
-                <option value="80mm">80mm</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label>Printer Turi</label>
-              <select
-                value={settings.printer?.printerType || "thermal"}
-                onChange={(e) => handleChange("printer", "printerType", e.target.value)}
-              >
-                <option value="thermal">Thermal</option>
-                <option value="inkjet">Inkjet</option>
-                <option value="laser">Laser</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="form-group full-width">
-            <label>Chek Sarlavhasi</label>
-            <input
-              type="text"
-              placeholder="ZarPOS Restoran"
-              value={settings.printer?.headerText || ""}
-              onChange={(e) => handleChange("printer", "headerText", e.target.value)}
-            />
-          </div>
-
-          <div className="form-group full-width">
-            <label>Chek Pastki Matni</label>
-            <input
-              type="text"
-              placeholder="Raxmat, qayta ko'ring!"
-              value={settings.printer?.footerText || ""}
-              onChange={(e) => handleChange("printer", "footerText", e.target.value)}
-            />
-          </div>
-
-          <div className="toggle-section">
-            <label className="toggle-label">
-              <input
-                type="checkbox"
-                checked={settings.printer?.autoprint || false}
-                onChange={(e) => handleChange("printer", "autoprint", e.target.checked)}
-              />
-              <span className="toggle-switch"></span>
-              <span>Avtomatik Chop Qilish</span>
-            </label>
-
-            <label className="toggle-label">
-              <input
-                type="checkbox"
-                checked={settings.printer?.printLogo || false}
-                onChange={(e) => handleChange("printer", "printLogo", e.target.checked)}
-              />
-              <span className="toggle-switch"></span>
-              <span>Logotipni Chop Qilish</span>
-            </label>
-          </div>
-
-          <div className="button-group">
-            <button
-              type="button"
-              className="btn-test"
-              onClick={testPrinterConnection}
-              disabled={testingConnection}
-            >
-              {testingConnection ? "Tekshirilmoqda..." : "🔌 Ulanishni Tekshirish"}
-            </button>
-            
-            <button
-              type="button"
-              className="btn-test"
-              onClick={testPrintCheck}
-              disabled={testingPrint}
-            >
-              {testingPrint ? "Chop qilinyapti..." : "🖨️ Test Chek"}
-            </button>
-          </div>
-        </>
-      )}
-    </div>
-  );
+    );
+  };
 
   const renderPaymentSettings = () => (
     <div className="settings-panel">
