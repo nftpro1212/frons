@@ -49,8 +49,15 @@
 .select-user-head {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  text-align: center;
+  gap: 18px;
+}
+
+.select-user-headline {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  text-align: left;
 }
 
 .select-user-head .tagline {
@@ -72,7 +79,30 @@
   color: var(--app-text-soft);
   font-size: 1rem;
   max-width: 620px;
-  margin-inline: auto;
+}
+
+.session-end-btn {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.75rem 1.6rem;
+  border-radius: var(--app-radius-sm);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--app-text);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform var(--app-transition), box-shadow var(--app-transition), background var(--app-transition), border-color var(--app-transition);
+}
+
+.session-end-btn:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 0, 60, 0.42);
+  background: rgba(255, 0, 60, 0.14);
+  box-shadow: var(--app-shadow-soft);
 }
 
 .select-user-status {
@@ -259,6 +289,16 @@
     gap: 22px;
   }
 
+  .select-user-headline {
+    flex-direction: column;
+    align-items: stretch;
+    text-align: center;
+  }
+
+  .session-end-btn {
+    align-self: center;
+  }
+
   .select-user-grid {
     gap: 18px;
   }
@@ -271,6 +311,10 @@
 
   .select-user-title {
     font-size: clamp(1.8rem, 5vw, 2.4rem);
+  }
+
+  .select-user-head .tagline {
+    text-align: center;
   }
 
   .select-user-grid {

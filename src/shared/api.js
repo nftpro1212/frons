@@ -1,7 +1,7 @@
 import axios from "axios";
 
 // Vite faqat VITE_ bilan boshlangan o'zgaruvchilarni browserga chiqaradi
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_BASE = import.meta.env.VITE_API_URL || "https://pos-1-o5b5.onrender.com/api";
 
 const api = axios.create({
   baseURL: API_BASE,

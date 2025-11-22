@@ -23,7 +23,7 @@ const getInitials = (name = "") =>
     .join("") || "ST";
 
 export default function SelectUserPage() {
-  const { pinLogin } = useAuth();
+  const { pinLogin, logout } = useAuth();
   const navigate = useNavigate();
 
   const [staff, setStaff] = useState([]);
@@ -34,6 +34,16 @@ export default function SelectUserPage() {
   const [pin, setPin] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [pinError, setPinError] = useState("");
+  const tokenErrorPatterns = useMemo(() => ["token invalid", "token expired"], []);
+
+  const handleLogout = useCallback(() => {
+    logout();
+    setSelectedUser(null);
+    setModalOpen(false);
+    setPin("");
+    setPinError("");
+    navigate("/login", { replace: true });
+  }, [logout, navigate]);
 
   const loadStaff = useCallback(async () => {
     try {
@@ -137,11 +147,23 @@ export default function SelectUserPage() {
       });
   }, [staff]);
 
+  const normalizedError = useMemo(() => (error ? error.toString().toLowerCase() : ""), [error]);
+
   return (
     <div className="select-user-view">
       <div className="select-user-content">
         <div className="select-user-head">
-       
+          <div className="select-user-headline">
+            <div>
+              <p className="tagline">Xodimni tanlang</p>
+              <h1 className="select-user-title">PIN orqali sessiyaga ulanishingiz mumkin</h1>
+              <p className="select-user-subtitle">Har bir xodim o‘z PIN kodi bilan tizimga kiradi. Ish yakunlangach sessiyani yopishni unutmang.</p>
+            </div>
+            <button type="button" className="session-end-btn" onClick={handleLogout}>
+              <span aria-hidden="true">⏏️</span>
+              <span>Tizimdan chiqish</span>
+            </button>
+          </div>
         </div>
 
         {loading && <div className="select-user-status">Xodimlar ro‘yxati yuklanmoqda...</div>}
@@ -149,9 +171,15 @@ export default function SelectUserPage() {
         {!loading && error && (
           <div className="select-user-status error">
             <span>{error}</span>
-            <button type="button" onClick={loadStaff}>
-              Qayta urinish
-            </button>
+            {tokenErrorPatterns.some((pattern) => normalizedError.includes(pattern)) ? (
+              <button type="button" onClick={handleLogout}>
+                Chiqish
+              </button>
+            ) : (
+              <button type="button" onClick={loadStaff}>
+                Qayta urinish
+              </button>
+            )}
           </div>
         )}
 
