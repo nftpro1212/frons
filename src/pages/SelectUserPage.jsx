@@ -156,8 +156,7 @@ export default function SelectUserPage() {
           <div className="select-user-headline">
             <div>
               <p className="tagline">Xodimni tanlang</p>
-              <h1 className="select-user-title">PIN orqali sessiyaga ulanishingiz mumkin</h1>
-              <p className="select-user-subtitle">Har bir xodim o‘z PIN kodi bilan tizimga kiradi. Ish yakunlangach sessiyani yopishni unutmang.</p>
+
             </div>
             <button type="button" className="session-end-btn" onClick={handleLogout}>
               <span aria-hidden="true">⏏️</span>
