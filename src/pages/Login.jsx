@@ -199,7 +199,7 @@ export default function Login() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.27, duration: 0.4 }}
               >
-                Foydalanuvchi nomi va parolingizni kiriting. Sensor ekran uchun ekran klaviaturasi avtomatik yoqiladi.
+                Foydalanuvchi nomi va parolingizni kiriting. 
               </motion.p>
 
               <motion.label
