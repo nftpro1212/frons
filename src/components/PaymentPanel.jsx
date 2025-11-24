@@ -23,6 +23,8 @@ const PaymentPanel = ({ order, onPaid }) => {
   const [success, setSuccess] = useState("");
   const [showCheckOptions, setShowCheckOptions] = useState(false);
   const [printerSettings, setPrinterSettings] = useState({});
+  const [printing, setPrinting] = useState(false);
+  const [lastPayment, setLastPayment] = useState(null);
 
   const numberFormatter = useMemo(() => new Intl.NumberFormat("uz-UZ"), []);
   const formatCurrency = useCallback(
@@ -79,6 +81,7 @@ const PaymentPanel = ({ order, onPaid }) => {
     setError("");
     setSuccess("");
     setShowCheckOptions(false);
+    setLastPayment(null);
   }, [order?._id, totals.baseDiscount, totals.totalDue]);
 
   const clampCurrency = useCallback(
@@ -171,15 +174,28 @@ const PaymentPanel = ({ order, onPaid }) => {
       });
 
       const paymentData = paymentResponse.data;
-      setSuccess("To'lov muvaffaqiyatli bajarildi!");
+      setLastPayment(paymentData);
       setShowCheckOptions(true);
 
-      setTimeout(() => {
-        const payload = buildCheckPayload(paymentData);
-        if (printerSettings?.autoprint) {
-          printCheck(payload, paymentData, printerSettings);
+      const summary = paymentData?.printReport?.summary;
+      let successMessage = "To'lov muvaffaqiyatli bajarildi!";
+      if (summary) {
+        if (!summary.total) {
+          successMessage = "To'lov muvaffaqiyatli. Printerga yuborilmagan.";
+        } else if (summary.failed) {
+          successMessage = `To'lov bajarildi, lekin ${summary.failed} printer xatolik qaytardi.`;
+        } else {
+          successMessage = "To'lov bajarildi va chek printerga yuborildi.";
         }
-      }, 700);
+      }
+      setSuccess(successMessage);
+      if (summary) {
+        if (!summary.total) {
+          setError("Printerga yuborilmadi. Printer sozlamalarini tekshiring.");
+        } else if (!summary.success && summary.failed) {
+          setError(`${summary.failed} ta printer xatolik qaytardi.`);
+        }
+      }
 
       if (onPaid) {
         setTimeout(() => onPaid(), 1400);
@@ -191,13 +207,56 @@ const PaymentPanel = ({ order, onPaid }) => {
     }
   };
 
-  const handlePrintCheck = () => {
-    const payload = buildCheckPayload();
-    printCheck(payload, payload.payment, printerSettings);
+  const handlePrintCheck = async () => {
+    const payload = buildCheckPayload(lastPayment || {});
+
+    if (!lastPayment?._id) {
+      printCheck(payload, payload.payment, printerSettings);
+      return;
+    }
+
+    setPrinting(true);
+    setError("");
+
+    try {
+      const response = await api.post(`/payments/${lastPayment._id}/print`, {
+        printerId: printerSettings?.defaultPrinterId || null,
+        dispatchMode: printerSettings?.dispatchMode,
+        agentChannel: printerSettings?.agentChannel,
+      });
+
+      const { success: printSuccess, message, printReport: report } = response.data || {};
+      const summary = report?.summary;
+
+      setLastPayment((prev) => (prev ? { ...prev, printReport: report } : prev));
+
+      if (printSuccess) {
+        setSuccess(message || "Chek printerga yuborildi");
+        if (summary?.failed) {
+          setError(`${summary.failed} ta printer xatolik qaytardi.`);
+        } else {
+          setError("");
+        }
+      } else {
+        setSuccess("");
+        if (summary?.failed) {
+          setError(`${summary.failed} ta printer xatolik qaytardi.`);
+        } else if (!summary?.total) {
+          setError(message || "Faol printer topilmadi");
+        } else {
+          setError(message || "Chekni chop qilib bo'lmadi");
+        }
+      }
+    } catch (err) {
+      setSuccess("");
+      setError(err?.response?.data?.message || "Chekni chop qilib bo'lmadi");
+    } finally {
+      setPrinting(false);
+    }
   };
 
   const handleDownloadCheck = () => {
-    const payload = buildCheckPayload();
+    const payload = buildCheckPayload(lastPayment || {});
     downloadCheckAsHTML(payload, payload.payment, printerSettings);
   };
 
@@ -336,8 +395,13 @@ const PaymentPanel = ({ order, onPaid }) => {
         <div className="payment-check-actions">
           <span>Chek amallari</span>
           <div className="payment-check-buttons">
-            <button type="button" className="payment-check-btn" onClick={handlePrintCheck}>
-              <FiPrinter /> Chekni chop etish
+            <button
+              type="button"
+              className="payment-check-btn"
+              onClick={handlePrintCheck}
+              disabled={printing}
+            >
+              <FiPrinter /> {printing ? "Chek yuborilmoqda..." : "Chekni chop etish"}
             </button>
             <button type="button" className="payment-check-btn secondary" onClick={handleDownloadCheck}>
               <FiDownload /> Chekni yuklab olish
