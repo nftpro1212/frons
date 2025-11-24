@@ -2,6 +2,8 @@ import axios from "axios";
 import React, { useEffect, useState } from "react";
 import "../styles/Settings.css";
 
+const getAgentBridge = () => (typeof window !== "undefined" ? window.posAgent || null : null);
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState({
     restaurantName: "",
@@ -124,6 +126,8 @@ export default function SettingsPage() {
   const [saveMessage, setSaveMessage] = useState("");
   const [testingConnection, setTestingConnection] = useState(false);
   const [testingPrint, setTestingPrint] = useState(false);
+  const [testingAgentPrint, setTestingAgentPrint] = useState(false);
+  const [agentBridgeAvailable, setAgentBridgeAvailable] = useState(Boolean(getAgentBridge()));
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -138,6 +142,23 @@ export default function SettingsPage() {
     };
     fetchSettings();
   }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAgentBridgeAvailable(Boolean(getAgentBridge()));
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const resolvePrinterAgentConfig = () => {
+    const printer = settings.printerSettings || {};
+    const dispatchModeCandidate = printer.dispatchMode || printer.dispatch_mode || "direct";
+    const dispatchMode = typeof dispatchModeCandidate === "string" ? dispatchModeCandidate.toLowerCase() : "direct";
+    const agentChannel = printer.agentChannel || printer.agent_channel || printer.restaurantId || "default";
+
+    return { dispatchMode, agentChannel };
+  };
 
   const saveSettings = async () => {
     try {
@@ -156,9 +177,16 @@ export default function SettingsPage() {
   const testPrinterConnection = async () => {
     try {
       setTestingConnection(true);
+      const { dispatchMode, agentChannel } = resolvePrinterAgentConfig();
       const response = await axios.post("/api/settings/test-printer-connection", {
         ipAddress: settings.printerSettings?.ipAddress,
-        port: settings.printerSettings?.port
+        port: settings.printerSettings?.port,
+        ...(dispatchMode === "agent"
+          ? {
+              dispatchMode: "agent",
+              agentChannel,
+            }
+          : {}),
       });
       setSaveMessage(`✅ ${response.data.message}`);
       handleNestedChange("printerSettings", "connectionStatus", "connected");
@@ -174,7 +202,17 @@ export default function SettingsPage() {
   const testPrintCheck = async () => {
     try {
       setTestingPrint(true);
-      const response = await axios.post("/api/settings/test-print-check");
+      const { dispatchMode, agentChannel } = resolvePrinterAgentConfig();
+      const response = await axios.post("/api/settings/test-print-check", {
+        ipAddress: settings.printerSettings?.ipAddress,
+        port: settings.printerSettings?.port,
+        ...(dispatchMode === "agent"
+          ? {
+              dispatchMode: "agent",
+              agentChannel,
+            }
+          : {}),
+      });
       setSaveMessage(`✅ ${response.data.message}`);
     } catch (error) {
       setSaveMessage(`❌ ${error.response?.data?.message || "Xatolik yuz berdi"}`);
@@ -203,6 +241,33 @@ export default function SettingsPage() {
         [child]: { ...prev[parent][child], [field]: value }
       }
     }));
+  };
+
+  const testAgentPrint = async () => {
+    const agent = getAgentBridge();
+    const { dispatchMode, agentChannel } = resolvePrinterAgentConfig();
+
+    try {
+      setTestingAgentPrint(true);
+      if (agent) {
+        await agent.printTest();
+        setSaveMessage("✅ Agent orqali test yuborildi");
+      } else {
+        const response = await axios.post("/api/settings/test-print-check", {
+          ipAddress: settings.printerSettings?.ipAddress,
+          port: settings.printerSettings?.port,
+          dispatchMode: dispatchMode === "agent" ? "agent" : "direct",
+          ...(dispatchMode === "agent" ? { agentChannel } : {}),
+        });
+        setSaveMessage(`✅ ${response.data?.message || "Test yuborildi"}`);
+      }
+    } catch (error) {
+      console.error("Agent test print xatosi", error);
+      setSaveMessage(`❌ ${error.response?.data?.message || error.message || "Agent test xatosi"}`);
+    } finally {
+      setTestingAgentPrint(false);
+      setTimeout(() => setSaveMessage(""), 4000);
+    }
   };
 
   if (loading) {
@@ -685,11 +750,28 @@ export default function SettingsPage() {
                           <button 
                             className="btn-test-print" 
                             onClick={testPrintCheck}
-                            disabled={testingPrint || settings.printerSettings?.connectionStatus !== "connected"}
+                            disabled={testingPrint}
                           >
                             {testingPrint ? "⏳ Chap bo'lmoqda..." : "🖨️ Test Chap"}
                           </button>
+                          <button
+                            className="btn-test-print"
+                            onClick={testAgentPrint}
+                            disabled={testingAgentPrint}
+                          >
+                            {testingAgentPrint
+                              ? "Agent yuboryapti..."
+                              : agentBridgeAvailable
+                              ? "🛰️ Agent sinovi"
+                              : "🛰️ Agent sinovi (backend)"}
+                          </button>
                         </div>
+
+                        {!agentBridgeAvailable && (
+                          <p className="agent-hint-modern">
+                            Lokal agent yoqilmagan bo'lsa ham bu tugma backend orqali masofadagi agentga sinov yuboradi. Kanal nomi mos bo'lsin.
+                          </p>
+                        )}
                       </div>
                     )}
 

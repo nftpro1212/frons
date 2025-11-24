@@ -347,6 +347,12 @@
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+
+.agent-hint {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: #5c5c5c;
+}
 }
 
 /* Footer */

@@ -282,6 +282,13 @@
   cursor: not-allowed;
 }
 
+.agent-hint,
+.agent-hint-modern {
+  margin-top: 10px;
+  font-size: 0.85rem;
+  color: #666;
+}
+
 .btn-secondary,
 .btn-danger {
   padding: 0.6rem 1.15rem;

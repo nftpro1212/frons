@@ -2,6 +2,8 @@ import api from "../shared/api";
 import React, { useEffect, useState } from "react";
 import "./Settings.css";
 
+const getAgentBridge = () => (typeof window !== "undefined" ? window.posAgent || null : null);
+
 const PRINTER_TRIGGER_OPTIONS = [
   { value: "payment", label: "To'lov yopilganda" },
   { value: "order-open", label: "Buyurtma yaratilganda" },
@@ -311,6 +313,8 @@ export default function SettingsPage() {
   const [saveMessage, setSaveMessage] = useState("");
   const [testingConnection, setTestingConnection] = useState(false);
   const [testingPrint, setTestingPrint] = useState(false);
+  const [testingAgentPrint, setTestingAgentPrint] = useState(false);
+  const [agentBridgeAvailable, setAgentBridgeAvailable] = useState(Boolean(getAgentBridge()));
   const [testingTaxIntegration, setTestingTaxIntegration] = useState(false);
   const [selectedPrinterId, setSelectedPrinterId] = useState("");
   const saveMessageTone = saveMessage.startsWith("✅") ? "success" : saveMessage.startsWith("❌") ? "danger" : "info";
@@ -331,6 +335,26 @@ export default function SettingsPage() {
       fetchStaffList();
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAgentBridgeAvailable(Boolean(getAgentBridge()));
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const resolvePrinterAgentConfig = (printer) => {
+    const dispatchModeCandidate = printer?.dispatchMode || settings.printerSettings?.dispatchMode || "direct";
+    const dispatchMode = typeof dispatchModeCandidate === "string" ? dispatchModeCandidate.toLowerCase() : "direct";
+    const agentChannel =
+      printer?.agentChannel || settings.printerSettings?.agentChannel || settings._id || "default";
+
+    return {
+      dispatchMode,
+      agentChannel,
+    };
+  };
 
   useEffect(() => {
     const printers = settings.printerSettings?.printers || [];
@@ -416,12 +440,20 @@ export default function SettingsPage() {
       return;
     }
 
+    const { dispatchMode, agentChannel } = resolvePrinterAgentConfig(activePrinter);
+
     try {
       setTestingConnection(true);
       const response = await api.post("/settings/test-printer-connection", {
         printerId: activePrinter._id,
         ipAddress: activePrinter.ipAddress,
         port: activePrinter.port,
+        ...(dispatchMode === "agent"
+          ? {
+              dispatchMode: "agent",
+              agentChannel,
+            }
+          : {}),
       });
       setSaveMessage(`✅ ${response.data.message}`);
       const nowIso = new Date().toISOString();
@@ -494,12 +526,20 @@ export default function SettingsPage() {
       return;
     }
 
+    const { dispatchMode, agentChannel } = resolvePrinterAgentConfig(activePrinter);
+
     try {
       setTestingPrint(true);
       const response = await api.post("/settings/test-print-check", {
         printerId: activePrinter._id,
         ipAddress: activePrinter.ipAddress,
         port: activePrinter.port,
+        ...(dispatchMode === "agent"
+          ? {
+              dispatchMode: "agent",
+              agentChannel,
+            }
+          : {}),
       });
       setSaveMessage(`✅ ${response.data.message}`);
       const nowIso = new Date().toISOString();
@@ -551,6 +591,46 @@ export default function SettingsPage() {
       });
     } finally {
       setTestingPrint(false);
+      setTimeout(() => setSaveMessage(""), 4000);
+    }
+  };
+
+  const testAgentPrint = async () => {
+    const agent = getAgentBridge();
+    const printers = settings.printerSettings?.printers || [];
+    const activePrinter = printers.find(
+      (printer) => printer.clientId === selectedPrinterId || printer._id?.toString() === selectedPrinterId
+    ) || printers[0];
+
+    if (!activePrinter) {
+      setSaveMessage("❌ Printer tanlanmagan");
+      setTimeout(() => setSaveMessage(""), 3000);
+      return;
+    }
+
+    const printerId = activePrinter._id?.toString() || activePrinter.clientId || activePrinter.id;
+    const { agentChannel } = resolvePrinterAgentConfig(activePrinter);
+
+    try {
+      setTestingAgentPrint(true);
+      if (agent) {
+        await agent.printTest(printerId ? { printerId } : undefined);
+        setSaveMessage("✅ Agent orqali test yuborildi");
+      } else {
+        const response = await api.post("/settings/test-print-check", {
+          printerId: activePrinter._id,
+          ipAddress: activePrinter.ipAddress,
+          port: activePrinter.port,
+          dispatchMode: "agent",
+          agentChannel,
+        });
+        setSaveMessage(`✅ ${response.data?.message || "Agentga yuborildi"}`);
+      }
+    } catch (error) {
+      console.error("Agent test print xatosi", error);
+      setSaveMessage(`❌ ${error?.response?.data?.message || error?.message || "Agent test xatosi"}`);
+    } finally {
+      setTestingAgentPrint(false);
       setTimeout(() => setSaveMessage(""), 4000);
     }
   };
@@ -1321,7 +1401,26 @@ export default function SettingsPage() {
                     >
                       {testingPrint ? "Chop qilinyapti..." : "🖨️ Test chek"}
                     </button>
+
+                    <button
+                      type="button"
+                      className="btn-test"
+                      onClick={testAgentPrint}
+                      disabled={testingAgentPrint}
+                    >
+                      {testingAgentPrint
+                        ? "Agent yuboryapti..."
+                        : agentBridgeAvailable
+                        ? "🛰️ Agent sinovi"
+                        : "🛰️ Agent sinovi (backend)"}
+                    </button>
                   </div>
+
+                  {!agentBridgeAvailable && (
+                    <p className="agent-hint">
+                      Lokal agent yoqilmagan bo'lsa, tugma backend orqali ulanadi. Agar agent boshqa qurilmada ishga tushgan bo'lsa, kanal nomi mos bo'lishi kifoya.
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div className="printer-detail empty">
