@@ -143,7 +143,7 @@ export const generateCheckHTML = (order, payment, printerSettings = {}) => {
           <span>${subtotal.toLocaleString()} so'm</span>
         </div>
         <div class="info-row">
-          <span>Soliq:</span>
+          <span>Servis:</span>
           <span>${tax.toLocaleString()} so'm</span>
         </div>
         ${discount > 0

@@ -250,7 +250,7 @@ export default function SettingsPage() {
     { id: "general", label: "Umumiy", icon: "🏪" },
     { id: "printer", label: "Printer", icon: "🖨️" },
     { id: "payment", label: "To'lov", icon: "💳" },
-    { id: "tax", label: "Soliq", icon: "📊" },
+    { id: "tax", label: "Servis", icon: "📊" },
     { id: "discount", label: "Chegirma", icon: "🎁" },
     { id: "order", label: "Buyurtma", icon: "📋" },
     { id: "table", label: "Stol", icon: "🪑" },
@@ -587,7 +587,7 @@ export default function SettingsPage() {
 
   const renderTaxSettings = () => (
     <div className="settings-panel">
-      <h2>📊 Soliq Sozlamalari</h2>
+      <h2>📊 Servis Haqi Sozlamalari</h2>
       
       <div className="toggle-section">
         <label className="toggle-label">
@@ -597,7 +597,7 @@ export default function SettingsPage() {
             onChange={(e) => handleChange("tax", "enabled", e.target.checked)}
           />
           <span className="toggle-switch"></span>
-          <span>Soliqni Faollashtirish</span>
+          <span>Servis haqini faollashtirish</span>
         </label>
 
         <label className="toggle-label">
@@ -623,7 +623,7 @@ export default function SettingsPage() {
 
       <div className="form-grid">
         <div className="form-group">
-          <label>Soliq Nomi</label>
+          <label>Servis nomi</label>
           <input
             type="text"
             placeholder="QQS"
@@ -633,7 +633,7 @@ export default function SettingsPage() {
         </div>
 
         <div className="form-group">
-          <label>Soliq Stavkasi (%)</label>
+          <label>Servis foizi (%)</label>
           <input
             type="number"
             min="0"

@@ -283,7 +283,7 @@ export default function SettingsPage() {
 
   const tabs = [
     { id: "general", icon: "🏪", label: "Umumiy" },
-    { id: "tax", icon: "💰", label: "Soliq" },
+    { id: "tax", icon: "💰", label: "Servis" },
     { id: "payment", icon: "💳", label: "To'lov" },
     { id: "printer", icon: "🖨️", label: "Printer" },
     { id: "orders", icon: "📋", label: "Buyurtmalar" },
@@ -395,19 +395,19 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* SOLIQ SOZLAMALARI */}
+          {/* SERVIS SOZLAMALARI */}
           {activeTab === "tax" && (
             <div className="settings-panel-modern">
               <div className="panel-header">
-                <h2>💰 Soliq va Xizmat Haqqi</h2>
-                <p>Soliq stavkalari va chegirmalar</p>
+                <h2>💰 Servis Haqi Sozlamalari</h2>
+                <p>Servis foizi va chegirmalar</p>
               </div>
 
               <div className="toggle-card">
                 <div className="toggle-header">
                   <div>
-                    <h3>Soliq Hisoblash</h3>
-                    <p>Har bir buyurtmaga soliq qo'shish</p>
+                    <h3>Servis hisoblash</h3>
+                    <p>Har bir buyurtmaga servis haqqini qo'shish</p>
                   </div>
                   <label className="toggle-switch">
                     <input
@@ -423,7 +423,7 @@ export default function SettingsPage() {
                   <div className="toggle-content">
                     <div className="form-grid">
                       <div className="form-group-modern">
-                        <label>Soliq Nomi</label>
+                        <label>Servis nomi</label>
                         <input
                           type="text"
                           placeholder="QQS"
@@ -433,7 +433,7 @@ export default function SettingsPage() {
                       </div>
 
                       <div className="form-group-modern">
-                        <label>Soliq Stavkasi (%)</label>
+                        <label>Servis foizi (%)</label>
                         <input
                           type="number"
                           min="0"
@@ -451,7 +451,7 @@ export default function SettingsPage() {
                             checked={settings.taxSettings?.includeInPrice || false}
                             onChange={(e) => handleNestedChange("taxSettings", "includeInPrice", e.target.checked)}
                           />
-                          <span>Soliq narxga kiritilgan</span>
+                          <span>Servis narxga kiritilgan</span>
                         </label>
                       </div>
                     </div>

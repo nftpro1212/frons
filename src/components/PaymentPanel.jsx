@@ -287,7 +287,7 @@ const PaymentPanel = ({ order, onPaid }) => {
           <strong>{formatCurrency(totals.subtotal)}</strong>
         </div>
         <div className="payment-summary-card">
-          <span>Soliq</span>
+          <span>Servis</span>
           <strong>{formatCurrency(totals.tax)}</strong>
         </div>
         <div className="payment-summary-card">

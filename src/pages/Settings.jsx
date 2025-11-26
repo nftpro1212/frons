@@ -12,58 +12,37 @@ const PRINTER_TRIGGER_OPTIONS = [
   { value: "delivery", label: "Dostavka" },
   { value: "test", label: "Test chop" },
 ];
+const isValidObjectId = (value) => typeof value === "string" && /^[a-fA-F0-9]{24}$/.test(value.trim());
 
-const BASE_PRINTER_SETTINGS = {
-  enabled: true,
-  connectionType: "network",
-  printerName: "Receipt Printer",
-  ipAddress: "192.168.1.100",
-  port: 9100,
-  paperWidth: "80mm",
-  printerType: "thermal",
-  autoprint: false,
-  printCopies: 1,
-  printLogo: true,
-  printRestaurantName: true,
-  printTableNumber: true,
-  printWaiterName: true,
-  printTimestamp: true,
-  printPaymentMethod: true,
-  printQRCode: false,
-  headerText: "ZarPOS Restoran",
-  footerText: "Raxmat, qayta ko'ring!",
-  lastTestPrintDate: null,
-  lastPrintDate: null,
-  lastPrintError: "",
-  connectionStatus: "disconnected",
-  printers: [],
-  defaultPrinterId: "",
-  receiptTemplate: {
-    fontFamily: "monospace",
-    fontSize: 13,
-    headerAlign: "center",
-    bodyAlign: "left",
-    footerAlign: "center",
-    accentSymbol: "-",
-    dividerStyle: "dashed",
-    boldTotals: true,
-    showLogo: true,
-    showTaxBreakdown: true,
-    showDiscount: true,
-    showQr: false,
-    qrLabel: "",
-    qrValue: "",
-    lineHeight: 1.45,
-    columnsLayout: "two-column",
-    customMessage: "",
-  },
+const createClientId = () => `printer-${Math.random().toString(36).slice(2, 10)}`;
+
+const BASE_RECEIPT_TEMPLATE = {
+  fontFamily: "monospace",
+  fontSize: 13,
+  headerAlign: "center",
+  bodyAlign: "left",
+  footerAlign: "center",
+  accentSymbol: "-",
+  dividerStyle: "dashed",
+  boldTotals: true,
+  showLogo: true,
+  showTaxBreakdown: true,
+  showDiscount: true,
+  showQr: false,
+  qrLabel: "",
+  qrValue: "",
+  lineHeight: 1.4,
+  columnsLayout: "two-column",
+  customMessage: "",
 };
 
 const BASE_PRINTER_DEVICE = {
-  name: "Yangi printer",
+  name: "Asosiy printer",
   role: "front",
   location: "",
   connectionType: "network",
+  dispatchMode: "direct",
+  agentChannel: "default",
   ipAddress: "",
   port: 9100,
   paperWidth: "80mm",
@@ -84,28 +63,171 @@ const BASE_PRINTER_DEVICE = {
   note: "",
 };
 
-const createClientId = () => `client-${Math.random().toString(36).slice(2, 10)}`;
+const createBasePrinterSettings = () => ({
+  enabled: true,
+  connectionType: "network",
+  dispatchMode: "direct",
+  printerName: "Asosiy printer",
+  ipAddress: "",
+  port: 9100,
+  paperWidth: "80mm",
+  printerType: "thermal",
+  autoprint: false,
+  printCopies: 1,
+  printLogo: true,
+  printRestaurantName: true,
+  printTableNumber: true,
+  printWaiterName: true,
+  printTimestamp: true,
+  printPaymentMethod: true,
+  printQRCode: false,
+  headerText: "ZarPOS Restoran",
+  footerText: "Raxmat, qayta ko'ring!",
+  lastTestPrintDate: null,
+  lastPrintDate: null,
+  lastPrintError: "",
+  connectionStatus: "disconnected",
+  agentChannel: "default",
+  printers: [],
+  defaultPrinterId: "",
+  receiptTemplate: { ...BASE_RECEIPT_TEMPLATE },
+});
 
-const isValidObjectId = (value) => typeof value === "string" && /^[a-fA-F0-9]{24}$/.test(value);
+const BASE_PRINTER_SETTINGS = createBasePrinterSettings();
+
+const createDefaultSettings = () => ({
+  _id: "",
+  general: {
+    restaurantName: "ZarPOS Restoran",
+    currency: "UZS",
+    language: "uz",
+    timezone: "Asia/Tashkent",
+    dateFormat: "DD/MM/YYYY",
+    timeFormat: "24h",
+    restaurantAddress: "",
+    restaurantPhone: "",
+    restaurantEmail: "",
+  },
+  printerSettings: createBasePrinterSettings(),
+  payment: {
+    cashEnabled: true,
+    cardEnabled: true,
+    mobilePaymentEnabled: true,
+    allowSplitPayment: true,
+    requireSignature: false,
+    defaultTipPercent: 10,
+    tipEnabled: true,
+  },
+  tax: {
+    enabled: true,
+    includeInPrice: false,
+    taxName: "Servis haqi",
+    taxRate: 0,
+    serviceChargeEnabled: false,
+    serviceCharge: 0,
+    showOnReceipt: true,
+  },
+  taxIntegration: {
+    enabled: false,
+    provider: "iiko",
+    mode: "sandbox",
+    apiBaseUrl: "https://api.iiko.services",
+    apiLogin: "demo-pos",
+    apiKey: "",
+    organizationId: "DEFAULT_ORG",
+    defaultVatRate: 12,
+    autoFiscalize: true,
+  },
+  discount: {
+    allowDiscounts: true,
+    requireManagerApproval: true,
+    trackDiscountReasons: false,
+    allowCouponCodes: true,
+    maxDiscountPercent: 20,
+  },
+  order: {
+    allowModifications: true,
+    allowCancellations: true,
+    requireCancellationReason: true,
+    orderPrefix: "ORD",
+    orderStartNumber: 1001,
+    autoCompleteTime: 60,
+  },
+  table: {
+    allowTableMerge: true,
+    showTableStatus: true,
+    tablePrefix: "T",
+    defaultTableCapacity: 4,
+    tableLayout: "grid",
+  },
+  staff: {
+    requireLogin: true,
+    idleTimeout: 30,
+    trackWorkHours: true,
+    allowClockInOut: true,
+    commissionEnabled: false,
+    commissionRate: 0,
+  },
+  security: {
+    requireStrongPassword: false,
+    allowMultipleSessions: false,
+    enableAuditLog: true,
+    passwordMinLength: 6,
+    sessionTimeout: 60,
+    backupFrequency: "daily",
+  },
+  notification: {
+    orderNotifications: true,
+    paymentNotifications: true,
+    lowStockAlerts: false,
+    emailNotifications: false,
+    smsNotifications: false,
+  },
+  kitchen: {
+    kitchenDisplay: true,
+    autoAssignOrders: true,
+    prepTimeTracking: true,
+    ingredientTracking: false,
+    soundAlerts: true,
+  },
+  _raw: {
+    taxSettings: {},
+    paymentSettings: {},
+    discountSettings: {},
+    orderSettings: {},
+    tableSettings: {},
+    staffSettings: {},
+    securitySettings: {},
+    notificationSettings: {},
+    kitchenSettings: {},
+    printerSettings: {},
+    taxIntegration: {},
+  },
+});
+
+const cloneDeep = (value) => JSON.parse(JSON.stringify(value ?? {}));
 
 const normalizePrinter = (printer = {}, index = 0) => {
+  const source = printer?.toObject ? printer.toObject() : { ...printer };
   const normalized = {
     ...BASE_PRINTER_DEVICE,
-    ...printer,
+    ...source,
   };
 
-  normalized.autoPrintTriggers = Array.isArray(normalized.autoPrintTriggers) && normalized.autoPrintTriggers.length
-    ? Array.from(new Set(normalized.autoPrintTriggers))
-    : ["payment"];
+  normalized.autoPrintTriggers =
+    Array.isArray(normalized.autoPrintTriggers) && normalized.autoPrintTriggers.length
+      ? Array.from(new Set(normalized.autoPrintTriggers))
+      : ["payment"];
 
-  normalized.templateOverrides = normalized.templateOverrides || {};
-
+  normalized.templateOverrides = normalized.templateOverrides ? { ...normalized.templateOverrides } : {};
   normalized.port = Number(normalized.port) || 9100;
   normalized.copies = Math.max(1, Number(normalized.copies) || 1);
 
-  const idFromDoc = normalized._id ? normalized._id.toString() : "";
-  normalized.clientId = idFromDoc || createClientId();
-
+  const idFromDoc = source._id ? source._id.toString() : "";
+  normalized.clientId = source.clientId || idFromDoc || createClientId();
+  if (source._id) {
+    normalized._id = source._id;
+  }
   if (!normalized.name || normalized.name === BASE_PRINTER_DEVICE.name) {
     normalized.name = `Printer ${index + 1}`;
   }
@@ -113,64 +235,400 @@ const normalizePrinter = (printer = {}, index = 0) => {
   return normalized;
 };
 
-const normalizeSettingsData = (data = {}) => {
-  const printerSettings = {
-    ...BASE_PRINTER_SETTINGS,
-    ...(data.printerSettings || {}),
-  };
+const normalizePrinterSettings = (settings = {}, settingsId = "") => {
+  const base = createBasePrinterSettings();
+  const source = settings?.toObject ? settings.toObject() : { ...settings };
 
-  const printers = Array.isArray(printerSettings.printers)
-    ? printerSettings.printers.map((printer, index) => normalizePrinter(printer, index))
-    : [];
-
-  const defaultPrinterId = printerSettings.defaultPrinterId
-    ? printerSettings.defaultPrinterId.toString()
-    : "";
-
-  return {
-    ...data,
-    printerSettings: {
-      ...printerSettings,
-      printers,
-      defaultPrinterId,
+  const merged = {
+    ...base,
+    ...source,
+    receiptTemplate: {
+      ...BASE_RECEIPT_TEMPLATE,
+      ...(source.receiptTemplate && source.receiptTemplate.toObject
+        ? source.receiptTemplate.toObject()
+        : source.receiptTemplate || {}),
     },
   };
+
+  const printersArray = Array.isArray(source.printers) ? source.printers : [];
+  merged.printers = printersArray.map((printer, index) => normalizePrinter(printer, index));
+
+  if (!merged.printers.length) {
+    const fallback = normalizePrinter(
+      {
+        name: merged.printerName || "Asosiy printer",
+        role: "front",
+        connectionType: merged.connectionType,
+        dispatchMode: merged.dispatchMode,
+        agentChannel: merged.agentChannel || settingsId || "default",
+        ipAddress: merged.ipAddress,
+        port: merged.port,
+      },
+      0
+    );
+    merged.printers = [fallback];
+    merged.defaultPrinterId = fallback._id ? fallback._id.toString() : "";
+  } else {
+    merged.defaultPrinterId = source.defaultPrinterId ? source.defaultPrinterId.toString() : merged.defaultPrinterId;
+  }
+
+  return merged;
+};
+
+const normalizeSettingsData = (data = {}) => {
+  const normalized = createDefaultSettings();
+  normalized._id = data._id?.toString?.() ?? data._id ?? normalized._id;
+
+  normalized.general = {
+    ...normalized.general,
+    restaurantName: data.restaurantName ?? normalized.general.restaurantName,
+    currency: data.currency ?? normalized.general.currency,
+    language: data.language ?? normalized.general.language,
+    timezone: data.timezone ?? normalized.general.timezone,
+    dateFormat: data.dateFormat ?? normalized.general.dateFormat,
+    timeFormat: data.timeFormat ?? normalized.general.timeFormat,
+    restaurantAddress: data.restaurantAddress ?? normalized.general.restaurantAddress,
+    restaurantPhone: data.restaurantPhone ?? normalized.general.restaurantPhone,
+    restaurantEmail: data.restaurantEmail ?? normalized.general.restaurantEmail,
+  };
+
+  normalized.printerSettings = normalizePrinterSettings(data.printerSettings || {}, normalized._id);
+
+  const paymentSettings = data.paymentSettings || {};
+  normalized.payment = {
+    ...normalized.payment,
+    cashEnabled: paymentSettings.acceptCash ?? normalized.payment.cashEnabled,
+    cardEnabled: paymentSettings.acceptCard ?? normalized.payment.cardEnabled,
+    mobilePaymentEnabled: paymentSettings.acceptQR ?? normalized.payment.mobilePaymentEnabled,
+    allowSplitPayment: paymentSettings.allowSplitPayment ?? normalized.payment.allowSplitPayment,
+    requireSignature: paymentSettings.requireSignature ?? normalized.payment.requireSignature,
+    defaultTipPercent:
+      Array.isArray(paymentSettings.suggestedTipPercents) && paymentSettings.suggestedTipPercents.length
+        ? Number(paymentSettings.suggestedTipPercents[0])
+        : normalized.payment.defaultTipPercent,
+    tipEnabled: paymentSettings.tipEnabled ?? normalized.payment.tipEnabled,
+  };
+
+  const taxSettings = data.taxSettings || {};
+  normalized.tax = {
+    ...normalized.tax,
+    enabled: taxSettings.enabled ?? normalized.tax.enabled,
+    includeInPrice: taxSettings.includeInPrice ?? normalized.tax.includeInPrice,
+    taxName: taxSettings.taxName ?? normalized.tax.taxName,
+    taxRate: Number.isFinite(Number(taxSettings.taxRate)) ? Number(taxSettings.taxRate) : normalized.tax.taxRate,
+    serviceChargeEnabled: taxSettings.serviceChargeEnabled ?? normalized.tax.serviceChargeEnabled,
+    serviceCharge: Number.isFinite(Number(taxSettings.serviceCharge))
+      ? Number(taxSettings.serviceCharge)
+      : normalized.tax.serviceCharge,
+    showOnReceipt: taxSettings.showOnReceipt ?? normalized.tax.showOnReceipt,
+  };
+
+  normalized.taxIntegration = {
+    ...normalized.taxIntegration,
+    ...(data.taxIntegration || {}),
+  };
+
+  const discountSettings = data.discountSettings || {};
+  normalized.discount = {
+    ...normalized.discount,
+    maxDiscountPercent: Number.isFinite(Number(discountSettings.maxDiscountPercent))
+      ? Number(discountSettings.maxDiscountPercent)
+      : normalized.discount.maxDiscountPercent,
+    requireManagerApproval:
+      discountSettings.requireManagerApproval ?? normalized.discount.requireManagerApproval,
+    allowCouponCodes: discountSettings.allowCouponCodes ?? normalized.discount.allowCouponCodes,
+    allowDiscounts: discountSettings.allowDiscounts ?? normalized.discount.allowDiscounts,
+    trackDiscountReasons:
+      discountSettings.trackDiscountReasons ?? normalized.discount.trackDiscountReasons,
+  };
+
+  const orderSettings = data.orderSettings || {};
+  normalized.order = {
+    ...normalized.order,
+    allowModifications: orderSettings.allowModifications ?? normalized.order.allowModifications,
+    allowCancellations: orderSettings.allowCancellations ?? normalized.order.allowCancellations,
+    requireCancellationReason:
+      orderSettings.requireCancellationReason ?? normalized.order.requireCancellationReason,
+    orderPrefix: orderSettings.orderPrefix ?? normalized.order.orderPrefix,
+    orderStartNumber: Number.isFinite(Number(orderSettings.orderStartNumber))
+      ? Number(orderSettings.orderStartNumber)
+      : normalized.order.orderStartNumber,
+    autoCompleteTime: Number.isFinite(Number(orderSettings.autoCompleteTime))
+      ? Number(orderSettings.autoCompleteTime)
+      : normalized.order.autoCompleteTime,
+  };
+
+  const tableSettings = data.tableSettings || {};
+  normalized.table = {
+    ...normalized.table,
+    allowTableMerge: tableSettings.allowTableMerge ?? normalized.table.allowTableMerge,
+    showTableStatus: tableSettings.showTableStatus ?? normalized.table.showTableStatus,
+    tablePrefix: tableSettings.tablePrefix ?? normalized.table.tablePrefix,
+    defaultTableCapacity: Number.isFinite(Number(tableSettings.defaultTableCapacity))
+      ? Number(tableSettings.defaultTableCapacity)
+      : normalized.table.defaultTableCapacity,
+    tableLayout: tableSettings.tableLayout ?? normalized.table.tableLayout,
+  };
+
+  const staffSettings = data.staffSettings || {};
+  normalized.staff = {
+    ...normalized.staff,
+    requireLogin: staffSettings.requirePinLogin ?? normalized.staff.requireLogin,
+    trackWorkHours: staffSettings.trackWorkingHours ?? normalized.staff.trackWorkHours,
+    allowClockInOut: staffSettings.allowMultipleLogins ?? normalized.staff.allowClockInOut,
+    commissionEnabled: staffSettings.commissionEnabled ?? normalized.staff.commissionEnabled,
+    idleTimeout: Number.isFinite(Number(staffSettings.sessionTimeout))
+      ? Number(staffSettings.sessionTimeout)
+      : normalized.staff.idleTimeout,
+    commissionRate: Number.isFinite(Number(staffSettings.commissionRate))
+      ? Number(staffSettings.commissionRate)
+      : normalized.staff.commissionRate,
+  };
+
+  const securitySettings = data.securitySettings || {};
+  normalized.security = {
+    ...normalized.security,
+    requireStrongPassword:
+      securitySettings.requireStrongPassword ?? normalized.security.requireStrongPassword,
+    allowMultipleSessions:
+      securitySettings.allowMultipleSessions ?? normalized.security.allowMultipleSessions,
+    enableAuditLog: securitySettings.enableAuditLog ?? normalized.security.enableAuditLog,
+    passwordMinLength: Number.isFinite(Number(securitySettings.passwordMinLength))
+      ? Number(securitySettings.passwordMinLength)
+      : normalized.security.passwordMinLength,
+    sessionTimeout: Number.isFinite(Number(securitySettings.sessionTimeout))
+      ? Number(securitySettings.sessionTimeout)
+      : normalized.security.sessionTimeout,
+    backupFrequency: securitySettings.backupFrequency ?? normalized.security.backupFrequency,
+  };
+
+  const notificationSettings = data.notificationSettings || {};
+  normalized.notification = {
+    ...normalized.notification,
+    orderNotifications:
+      notificationSettings.newOrderAlert ?? notificationSettings.orderNotifications ?? normalized.notification.orderNotifications,
+    paymentNotifications:
+      notificationSettings.enableNotifications ?? normalized.notification.paymentNotifications,
+    lowStockAlerts:
+      notificationSettings.lowInventoryAlert ?? notificationSettings.lowStockAlerts ?? normalized.notification.lowStockAlerts,
+    emailNotifications:
+      notificationSettings.emailNotifications ?? normalized.notification.emailNotifications,
+    smsNotifications:
+      notificationSettings.smsNotifications ?? normalized.notification.smsNotifications,
+  };
+
+  const kitchenSettings = data.kitchenSettings || {};
+  normalized.kitchen = {
+    ...normalized.kitchen,
+    kitchenDisplay: kitchenSettings.enableKitchenDisplay ?? normalized.kitchen.kitchenDisplay,
+    autoAssignOrders: kitchenSettings.autoAssignOrders ?? normalized.kitchen.autoAssignOrders,
+    prepTimeTracking: kitchenSettings.prepTimeTracking ?? normalized.kitchen.prepTimeTracking,
+    ingredientTracking: kitchenSettings.ingredientTracking ?? normalized.kitchen.ingredientTracking,
+    soundAlerts: kitchenSettings.soundAlert ?? kitchenSettings.soundAlerts ?? normalized.kitchen.soundAlerts,
+  };
+
+  normalized._raw = {
+    taxSettings: cloneDeep(data.taxSettings),
+    paymentSettings: cloneDeep(data.paymentSettings),
+    discountSettings: cloneDeep(data.discountSettings),
+    orderSettings: cloneDeep(data.orderSettings),
+    tableSettings: cloneDeep(data.tableSettings),
+    staffSettings: cloneDeep(data.staffSettings),
+    securitySettings: cloneDeep(data.securitySettings),
+    notificationSettings: cloneDeep(data.notificationSettings),
+    kitchenSettings: cloneDeep(data.kitchenSettings),
+    printerSettings: cloneDeep(data.printerSettings),
+    taxIntegration: cloneDeep(data.taxIntegration),
+  };
+
+  return normalized;
+};
+
+const sanitizePrinterSettings = (currentSettings, rawSettings = {}) => {
+  const base = {
+    ...createBasePrinterSettings(),
+    ...rawSettings,
+  };
+
+  base.enabled = Boolean(currentSettings?.enabled);
+  base.connectionType = currentSettings?.connectionType || base.connectionType;
+  base.dispatchMode = currentSettings?.dispatchMode || base.dispatchMode;
+  base.printerName = currentSettings?.printerName || base.printerName;
+  base.ipAddress = currentSettings?.ipAddress || base.ipAddress;
+  base.port = Number(currentSettings?.port ?? base.port ?? 9100);
+  base.paperWidth = currentSettings?.paperWidth || base.paperWidth;
+  base.printerType = currentSettings?.printerType || base.printerType;
+  base.autoprint = Boolean(currentSettings?.autoprint);
+  base.printCopies = Math.max(1, Number(currentSettings?.printCopies ?? base.printCopies ?? 1));
+  base.printLogo = Boolean(currentSettings?.printLogo ?? base.printLogo);
+  base.printRestaurantName = Boolean(currentSettings?.printRestaurantName ?? base.printRestaurantName);
+  base.printTableNumber = Boolean(currentSettings?.printTableNumber ?? base.printTableNumber);
+  base.printWaiterName = Boolean(currentSettings?.printWaiterName ?? base.printWaiterName);
+  base.printTimestamp = Boolean(currentSettings?.printTimestamp ?? base.printTimestamp);
+  base.printPaymentMethod = Boolean(currentSettings?.printPaymentMethod ?? base.printPaymentMethod);
+  base.printQRCode = Boolean(currentSettings?.printQRCode ?? base.printQRCode);
+  base.headerText = currentSettings?.headerText ?? base.headerText;
+  base.footerText = currentSettings?.footerText ?? base.footerText;
+  base.agentChannel = currentSettings?.agentChannel || base.agentChannel || "default";
+  base.receiptTemplate = {
+    ...BASE_RECEIPT_TEMPLATE,
+    ...(rawSettings?.receiptTemplate || {}),
+    ...(currentSettings?.receiptTemplate || {}),
+  };
+
+  const printers = Array.isArray(currentSettings?.printers) ? currentSettings.printers : [];
+  base.printers = printers.map((printer) => {
+    const source = printer?.toObject ? printer.toObject() : { ...printer };
+    const {
+      clientId,
+      connectionStatus,
+      lastTestPrintDate,
+      lastConnectionTest,
+      lastPrintDate,
+      lastPrintError,
+      ...rest
+    } = source;
+
+    const sanitized = {
+      ...BASE_PRINTER_DEVICE,
+      ...rest,
+    };
+
+    sanitized.port = Number(rest.port) || 9100;
+    sanitized.copies = Math.max(1, Number(rest.copies) || 1);
+    sanitized.autoPrintTriggers =
+      Array.isArray(rest.autoPrintTriggers) && rest.autoPrintTriggers.length
+        ? Array.from(new Set(rest.autoPrintTriggers))
+        : ["payment"];
+    sanitized.templateOverrides = rest.templateOverrides || {};
+
+    if (printer._id) {
+      sanitized._id = printer._id;
+    }
+
+    return sanitized;
+  });
+
+  const defaultPrinterId = currentSettings?.defaultPrinterId || rawSettings?.defaultPrinterId || "";
+  base.defaultPrinterId = isValidObjectId(defaultPrinterId) ? defaultPrinterId : null;
+
+  return base;
 };
 
 const sanitizeSettingsForSave = (currentSettings) => {
   const payload = {
-    ...currentSettings,
-    printerSettings: currentSettings.printerSettings
-      ? {
-          ...currentSettings.printerSettings,
-          printers: (currentSettings.printerSettings.printers || []).map((printer) => {
-            const {
-              clientId,
-              connectionStatus,
-              lastTestPrintDate,
-              lastConnectionTest,
-              lastPrintDate,
-              lastPrintError,
-              ...rest
-            } = printer;
-            const cleaned = {
-              ...rest,
-              port: Number(rest.port) || 9100,
-              copies: Math.max(1, Number(rest.copies) || 1),
-              autoPrintTriggers:
-                Array.isArray(rest.autoPrintTriggers) && rest.autoPrintTriggers.length
-                  ? Array.from(new Set(rest.autoPrintTriggers))
-                  : ["payment"],
-              templateOverrides: rest.templateOverrides || {},
-            };
-            return cleaned;
-          }),
-        }
-      : undefined,
+    restaurantName: currentSettings.general?.restaurantName || "",
+    currency: currentSettings.general?.currency || "UZS",
+    language: currentSettings.general?.language || "uz",
+    timezone: currentSettings.general?.timezone || "Asia/Tashkent",
+    dateFormat: currentSettings.general?.dateFormat || "DD/MM/YYYY",
+    timeFormat: currentSettings.general?.timeFormat || "24h",
+    restaurantAddress: currentSettings.general?.restaurantAddress || "",
+    restaurantPhone: currentSettings.general?.restaurantPhone || "",
+    restaurantEmail: currentSettings.general?.restaurantEmail || "",
+    printerSettings: sanitizePrinterSettings(
+      currentSettings.printerSettings,
+      currentSettings._raw?.printerSettings
+    ),
+    paymentSettings: {
+      ...(currentSettings._raw?.paymentSettings || {}),
+      acceptCash: Boolean(currentSettings.payment?.cashEnabled),
+      acceptCard: Boolean(currentSettings.payment?.cardEnabled),
+      acceptQR: Boolean(currentSettings.payment?.mobilePaymentEnabled),
+      allowSplitPayment: Boolean(currentSettings.payment?.allowSplitPayment),
+      tipEnabled: Boolean(currentSettings.payment?.tipEnabled),
+      suggestedTipPercents: [
+        Number(currentSettings.payment?.defaultTipPercent || 0),
+        ...(Array.isArray(currentSettings._raw?.paymentSettings?.suggestedTipPercents)
+          ? currentSettings._raw.paymentSettings.suggestedTipPercents.slice(1)
+          : []),
+      ],
+    },
+    taxSettings: {
+      ...(currentSettings._raw?.taxSettings || {}),
+      enabled: Boolean(
+        currentSettings.tax?.enabled ?? currentSettings.tax?.serviceChargeEnabled
+      ),
+      includeInPrice: Boolean(currentSettings.tax?.includeInPrice),
+      taxName: currentSettings.tax?.taxName || "",
+      taxRate: Number(currentSettings.tax?.serviceCharge ?? currentSettings.tax?.taxRate ?? 0),
+      serviceChargeEnabled: Boolean(currentSettings.tax?.serviceChargeEnabled),
+      serviceCharge: Number(currentSettings.tax?.serviceCharge ?? currentSettings.tax?.taxRate ?? 0),
+      showOnReceipt: Boolean(currentSettings.tax?.showOnReceipt),
+    },
+    taxIntegration: {
+      ...(currentSettings._raw?.taxIntegration || {}),
+      ...(currentSettings.taxIntegration || {}),
+    },
+    discountSettings: {
+      ...(currentSettings._raw?.discountSettings || {}),
+      allowDiscounts: Boolean(currentSettings.discount?.allowDiscounts),
+      requireManagerApproval: Boolean(currentSettings.discount?.requireManagerApproval),
+      trackDiscountReasons: Boolean(currentSettings.discount?.trackDiscountReasons),
+      allowCouponCodes: Boolean(currentSettings.discount?.allowCouponCodes),
+      maxDiscountPercent: Number(currentSettings.discount?.maxDiscountPercent || 0),
+    },
+    orderSettings: {
+      ...(currentSettings._raw?.orderSettings || {}),
+      allowModifications: Boolean(currentSettings.order?.allowModifications),
+      allowCancellations: Boolean(currentSettings.order?.allowCancellations),
+      requireCancellationReason: Boolean(currentSettings.order?.requireCancellationReason),
+      orderPrefix: currentSettings.order?.orderPrefix || "",
+      orderStartNumber: Number(currentSettings.order?.orderStartNumber || 0),
+      autoCompleteTime: Number(currentSettings.order?.autoCompleteTime || 0),
+    },
+    tableSettings: {
+      ...(currentSettings._raw?.tableSettings || {}),
+      allowTableMerge: Boolean(currentSettings.table?.allowTableMerge),
+      showTableStatus: Boolean(currentSettings.table?.showTableStatus),
+      tablePrefix: currentSettings.table?.tablePrefix || "",
+      defaultTableCapacity: Number(currentSettings.table?.defaultTableCapacity || 0),
+      tableLayout:
+        currentSettings.table?.tableLayout ||
+        currentSettings._raw?.tableSettings?.tableLayout ||
+        "grid",
+    },
+    staffSettings: {
+      ...(currentSettings._raw?.staffSettings || {}),
+      requirePinLogin: Boolean(currentSettings.staff?.requireLogin),
+      trackWorkingHours: Boolean(currentSettings.staff?.trackWorkHours),
+      allowMultipleLogins: Boolean(currentSettings.staff?.allowClockInOut),
+      sessionTimeout: Number(currentSettings.staff?.idleTimeout || 0),
+      commissionEnabled: Boolean(currentSettings.staff?.commissionEnabled),
+      commissionRate: Number(currentSettings.staff?.commissionRate || 0),
+    },
+    securitySettings: {
+      ...(currentSettings._raw?.securitySettings || {}),
+      requireStrongPassword: Boolean(currentSettings.security?.requireStrongPassword),
+      allowMultipleSessions: Boolean(currentSettings.security?.allowMultipleSessions),
+      enableAuditLog: Boolean(currentSettings.security?.enableAuditLog),
+      passwordMinLength: Number(currentSettings.security?.passwordMinLength || 6),
+      sessionTimeout: Number(currentSettings.security?.sessionTimeout || 60),
+      backupFrequency: currentSettings.security?.backupFrequency || "daily",
+    },
+    notificationSettings: {
+      ...(currentSettings._raw?.notificationSettings || {}),
+      enableNotifications: Boolean(currentSettings.notification?.paymentNotifications ?? currentSettings._raw?.notificationSettings?.enableNotifications),
+      newOrderAlert: Boolean(currentSettings.notification?.orderNotifications),
+      lowInventoryAlert: Boolean(
+        currentSettings.notification?.lowStockAlerts ??
+          currentSettings._raw?.notificationSettings?.lowInventoryAlert
+      ),
+      emailNotifications: Boolean(currentSettings.notification?.emailNotifications),
+      smsNotifications: Boolean(currentSettings.notification?.smsNotifications),
+    },
+    kitchenSettings: {
+      ...(currentSettings._raw?.kitchenSettings || {}),
+      enableKitchenDisplay: Boolean(currentSettings.kitchen?.kitchenDisplay),
+      autoAssignOrders: Boolean(currentSettings.kitchen?.autoAssignOrders),
+      prepTimeTracking: Boolean(currentSettings.kitchen?.prepTimeTracking),
+      ingredientTracking: Boolean(currentSettings.kitchen?.ingredientTracking),
+      soundAlert: Boolean(currentSettings.kitchen?.soundAlerts),
+    },
   };
 
   if (payload.printerSettings && !isValidObjectId(payload.printerSettings.defaultPrinterId)) {
-    delete payload.printerSettings.defaultPrinterId;
+    payload.printerSettings.defaultPrinterId = null;
   }
 
   return payload;
@@ -188,125 +646,7 @@ const formatDateTime = (value) => {
 };
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState({
-    // Umumiy
-    restaurantName: "ZarPOS Restoran",
-    currency: "UZS",
-    language: "uz",
-    timezone: "Asia/Tashkent",
-    
-    // Printer
-    printerSettings: {
-      enabled: true,
-      connectionType: "network",
-      printerName: "Receipt Printer",
-      ipAddress: "192.168.1.100",
-      port: 9100,
-      paperWidth: "80mm",
-      printerType: "thermal",
-      autoprint: false,
-      printLogo: true,
-      headerText: "ZarPOS Restoran",
-      footerText: "Raxmat, qayta ko'ring!",
-      connectionStatus: "disconnected"
-    },
-    
-    // To'lov
-    paymentSettings: {
-      acceptCash: true,
-      acceptCard: true,
-      acceptQR: true,
-      allowSplitPayment: true,
-      tipEnabled: true,
-      suggestedTipPercents: [10, 15, 20]
-    },
-    
-    // Soliq
-    taxSettings: {
-      enabled: true,
-      taxName: "QQS",
-      taxRate: 0.12,
-      includeInPrice: false
-    },
-
-    // Soliq integratsiyasi
-    taxIntegration: {
-      enabled: false,
-      provider: "iiko",
-      mode: "sandbox",
-      apiBaseUrl: "https://api.iiko.services",
-      apiLogin: "demo-pos",
-      apiKey: "",
-      organizationId: "DEFAULT_ORG",
-      defaultVatRate: 12,
-      autoFiscalize: true
-    },
-    
-    // Chegirma
-    discountSettings: {
-      maxDiscountPercent: 20,
-      requireManagerApproval: true,
-      allowCouponCodes: true
-    },
-    
-    // Buyurtma
-    orderSettings: {
-      allowTableOrdering: true,
-      allowDelivery: true,
-      allowTakeaway: true,
-      autoAcceptOrders: false,
-      orderTimeout: 30
-    },
-    
-    // Stol
-    tableSettings: {
-      autoAssignTable: false,
-      allowTableMerge: true,
-      allowTableTransfer: true,
-      tableSessionTimeout: 180
-    },
-    
-    // Xodim
-    staffSettings: {
-      requirePinLogin: true,
-      pinLength: 4,
-      sessionTimeout: 60,
-      trackWorkingHours: true,
-      allowMultipleLogins: false
-    },
-    
-    // Xavfsizlik
-    securitySettings: {
-      enableAuditLog: true,
-      backupFrequency: "daily",
-      dataRetentionDays: 365,
-      requireManagerApproval: {
-        forDiscounts: true,
-        forVoids: true,
-        forRefunds: true,
-        forPriceChanges: true
-      }
-    },
-    
-    // Bildirishnoma
-    notificationSettings: {
-      enableNotifications: true,
-      soundEnabled: true,
-      newOrderAlert: true,
-      lowInventoryAlert: true,
-      emailNotifications: false,
-      smsNotifications: false
-    },
-    
-    // Oshxona
-    kitchenSettings: {
-      enableKitchenDisplay: true,
-      autoAcceptOrders: false,
-      printToKitchen: true,
-      soundAlert: true,
-      priorityOrders: true
-    }
-  });
+  const [settings, setSettings] = useState(() => createDefaultSettings());
 
   const [activeTab, setActiveTab] = useState("general");
   const [loading, setLoading] = useState(false);
@@ -654,13 +994,6 @@ export default function SettingsPage() {
     }
   };
 
-  const updateSettings = (section, value) => {
-    setSettings(prev => ({
-      ...prev,
-      [section]: typeof value === 'object' ? value : { ...prev[section], ...value }
-    }));
-  };
-
   const handleChange = (section, field, value) => {
     setSettings(prev => ({
       ...prev,
@@ -668,6 +1001,29 @@ export default function SettingsPage() {
         ...prev[section],
         [field]: value
       }
+    }));
+  };
+
+  const handleServiceToggle = (checked) => {
+    setSettings((prev) => ({
+      ...prev,
+      tax: {
+        ...prev.tax,
+        serviceChargeEnabled: checked,
+        enabled: checked,
+      },
+    }));
+  };
+
+  const handleServiceRateChange = (value) => {
+    const sanitized = Number.isFinite(value) ? value : 0;
+    setSettings((prev) => ({
+      ...prev,
+      tax: {
+        ...prev.tax,
+        serviceCharge: sanitized,
+        taxRate: sanitized,
+      },
     }));
   };
 
@@ -913,7 +1269,7 @@ export default function SettingsPage() {
     { id: "general", label: "Umumiy", icon: "🏪" },
     { id: "printer", label: "Printer", icon: "🖨️" },
     { id: "payment", label: "To'lov", icon: "💳" },
-    { id: "tax", label: "Soliq", icon: "📊" },
+    { id: "tax", label: "Servis", icon: "📊" },
     { id: "taxIntegration", label: "Soliq Integratsiyasi", icon: "🧾" },
     { id: "discount", label: "Chegirma", icon: "🎁" },
     { id: "order", label: "Buyurtma", icon: "📋" },
@@ -1514,60 +1870,71 @@ export default function SettingsPage() {
 
   const renderTaxSettings = () => (
     <div className="settings-panel">
-      <h2>📊 Soliq Sozlamalari</h2>
-      
+      <h2>📊 Servis Haqi Sozlamalari</h2>
+
       <div className="toggle-section">
         <label className="toggle-label">
           <input
             type="checkbox"
-            checked={settings.tax?.enabled || false}
-            onChange={(e) => handleChange("tax", "enabled", e.target.checked)}
+            checked={settings.tax?.serviceChargeEnabled || false}
+            onChange={(e) => handleServiceToggle(e.target.checked)}
           />
           <span className="toggle-switch"></span>
-          <span>Soliqni Faollashtirish</span>
+          <span>Servis haqini faollashtirish</span>
         </label>
 
         <label className="toggle-label">
           <input
             type="checkbox"
-            checked={settings.tax?.taxIncluded || false}
-            onChange={(e) => handleChange("tax", "taxIncluded", e.target.checked)}
+            checked={settings.tax?.includeInPrice || false}
+            onChange={(e) => handleChange("tax", "includeInPrice", e.target.checked)}
+            disabled={!settings.tax?.serviceChargeEnabled}
           />
           <span className="toggle-switch"></span>
-          <span>Narxga Kiritilgan</span>
+          <span>Narxga kiritish</span>
         </label>
 
         <label className="toggle-label">
           <input
             type="checkbox"
-            checked={settings.tax?.showOnReceipt || false}
+            checked={settings.tax?.showOnReceipt !== false}
             onChange={(e) => handleChange("tax", "showOnReceipt", e.target.checked)}
+            disabled={!settings.tax?.serviceChargeEnabled}
           />
           <span className="toggle-switch"></span>
-          <span>Chekda Ko'rsatish</span>
+          <span>Chekda ko'rsatish</span>
         </label>
       </div>
 
       <div className="form-grid">
         <div className="form-group">
-          <label>Soliq Nomi</label>
+          <label>Servis nomi</label>
           <input
             type="text"
-            placeholder="QQS"
+            placeholder="Servis haqi"
             value={settings.tax?.taxName || ""}
             onChange={(e) => handleChange("tax", "taxName", e.target.value)}
+            disabled={!settings.tax?.serviceChargeEnabled}
           />
         </div>
 
         <div className="form-group">
-          <label>Soliq Stavkasi (%)</label>
+          <label>Servis foizi (%)</label>
           <input
             type="number"
             min="0"
             max="100"
             step="0.1"
-            value={settings.tax?.taxRate || 12}
-            onChange={(e) => handleChange("tax", "taxRate", parseFloat(e.target.value))}
+            value={
+              settings.tax?.serviceCharge !== undefined
+                ? settings.tax.serviceCharge
+                : settings.tax?.taxRate || 0
+            }
+            onChange={(e) => {
+              const parsed = parseFloat(e.target.value);
+              handleServiceRateChange(Number.isNaN(parsed) ? 0 : parsed);
+            }}
+            disabled={!settings.tax?.serviceChargeEnabled}
           />
         </div>
       </div>

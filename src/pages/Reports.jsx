@@ -256,7 +256,7 @@ export default function ReportsPage() {
           <div>
             <p className="reports-stat-label">Umumiy tushum</p>
             <h3 className="reports-stat-value">{formatCurrency(report?.totals?.grossSales || 0)} so‘m</h3>
-            <span className="reports-stat-sub">Soliq: {formatCurrency(report?.totals?.taxCollected || 0)} so‘m</span>
+            <span className="reports-stat-sub">Servis: {formatCurrency(report?.totals?.taxCollected || 0)} so‘m</span>
           </div>
         </article>
         <article className="glass-card reports-stat-card">
