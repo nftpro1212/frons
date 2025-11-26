@@ -4,6 +4,7 @@ import {
   FiClock,
   FiCreditCard,
   FiFilter,
+  FiLayers,
   FiGrid,
   FiRefreshCcw,
   FiSearch,
@@ -40,11 +41,38 @@ const STATUS_ORDER = { free: 2, reserved: 1, occupied: 0 };
 
 const getTableCategory = (table) => {
   if (!table) return "Boshqa";
-  const raw = table.zone || table.section || table.area;
-  if (typeof raw === "string" && raw.trim()) return raw.trim();
+
+  const candidateFields = [
+    table.category,
+    table.location,
+    table.zone,
+    table.section,
+    table.area,
+    table.type,
+    table.room,
+    table.place,
+    table?.metadata?.category,
+    table?.metadata?.location,
+  ];
+
+  const found = candidateFields.find((value) => typeof value === "string" && value.trim());
+  if (found) return found.trim();
+
   const name = table.name || "";
   const [first] = name.split(/\s+/);
   return first || "Boshqa";
+};
+
+const formatCategoryLabel = (category) => {
+  if (!category) return "Boshqa";
+  const text = category.toString().trim();
+  if (!text) return "Boshqa";
+
+  return text
+    .replace(/[_-]+/g, " ")
+    .split(/\s+/)
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(" ");
 };
 
 function normalizeTablesResponse(data) {
@@ -70,6 +98,7 @@ const Kassa = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   const [statusFilter, setStatusFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
 
   const [loadingTables, setLoadingTables] = useState(false);
@@ -198,6 +227,20 @@ const Kassa = () => {
     }
   }, [loadTables, loadOrder, selectedTable]);
 
+  const tableCategories = useMemo(() => {
+    if (!tables.length) return [];
+
+    const counts = new Map();
+    tables.forEach((table) => {
+      const category = getTableCategory(table);
+      counts.set(category, (counts.get(category) || 0) + 1);
+    });
+
+    return Array.from(counts.entries())
+      .map(([value, count]) => ({ value, label: formatCategoryLabel(value), count }))
+      .sort((a, b) => a.label.localeCompare(b.label, "uz", { sensitivity: "base" }));
+  }, [tables]);
+
   const filteredTables = useMemo(() => {
     if (!tables.length) return [];
     const search = searchTerm.trim().toLowerCase();
@@ -206,6 +249,11 @@ const Kassa = () => {
       .filter((table) => {
         const statusMatch = statusFilter === "all" || table.status === statusFilter;
         if (!statusMatch) return false;
+
+        const categoryMatch =
+          categoryFilter === "all" || getTableCategory(table) === categoryFilter;
+        if (!categoryMatch) return false;
+
         if (!search) return true;
         const name = (table.name || "").toLowerCase();
         const code = (table.code || "").toLowerCase();
@@ -219,7 +267,7 @@ const Kassa = () => {
         if (orderA !== orderB) return orderA - orderB;
         return (a.name || "").localeCompare(b.name || "");
       });
-  }, [tables, statusFilter, searchTerm, selectedTable]);
+  }, [tables, statusFilter, categoryFilter, searchTerm, selectedTable]);
 
   useEffect(() => {
     if (!selectedTable?._id) return;
@@ -229,6 +277,14 @@ const Kassa = () => {
       setSelectedOrder(null);
     }
   }, [filteredTables, selectedTable]);
+
+  useEffect(() => {
+    if (categoryFilter === "all") return;
+    const exists = tableCategories.some((category) => category.value === categoryFilter);
+    if (!exists) {
+      setCategoryFilter("all");
+    }
+  }, [categoryFilter, tableCategories]);
 
   const tablesStats = useMemo(() => {
     const total = tables.length;
@@ -410,6 +466,35 @@ const Kassa = () => {
             <span className="kassa-last-sync">Sync: {lastSyncLabel}</span>
           </div>
 
+          {tableCategories.length > 0 && (
+            <div className="kassa-category-filters">
+              <span className="kassa-filter-label">
+                <FiLayers /> Kategoriya
+              </span>
+              <div className="kassa-filter-chips">
+                <button
+                  type="button"
+                  className={`kassa-filter-chip${categoryFilter === "all" ? " active" : ""}`}
+                  onClick={() => setCategoryFilter("all")}
+                >
+                  Barchasi
+                  <span className="kassa-chip-count">{tablesStats.total}</span>
+                </button>
+                {tableCategories.map((category) => (
+                  <button
+                    key={category.value}
+                    type="button"
+                    className={`kassa-filter-chip${categoryFilter === category.value ? " active" : ""}`}
+                    onClick={() => setCategoryFilter(category.value)}
+                  >
+                    {category.label}
+                    <span className="kassa-chip-count">{category.count}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="kassa-table-board">
             <div className="kassa-table-grid">
               {loadingTables ? (
@@ -423,8 +508,9 @@ const Kassa = () => {
                 filteredTables.map((table) => {
                   const isSelected = selectedTable?._id === table._id;
                   const statusLabel = TABLE_STATUS_LABELS[table.status] || table.status || "Holatsiz";
-                  const tableZone = getTableCategory(table);
-                  const metaLabel = table.code ? `${tableZone} · #${table.code}` : tableZone;
+                  const categoryValue = getTableCategory(table);
+                  const categoryLabel = formatCategoryLabel(categoryValue);
+                  const metaLabel = table.code ? `${categoryLabel} · #${table.code}` : categoryLabel;
                   return (
                     <button
                       key={table._id}
@@ -447,96 +533,6 @@ const Kassa = () => {
             </div>
           </div>
         </aside>
-
-        <section className="kassa-panel kassa-order-panel">
-          <div className="kassa-order-head">
-            <div className="kassa-order-headline">
-              <h2>{selectedTable?.name || "Stol tanlanmagan"}</h2>
-              <span className={`order-status-pill status-${orderStatusKey}`}>{orderStatusLabel}</span>
-            </div>
-            <div className="order-head-meta">
-              <span>
-                <FiClock /> {selectedOrder ? orderDuration : "—"}
-              </span>
-              <span>
-                <FiUsers /> {guestCount} mehmon
-              </span>
-              <span>
-                <FiCreditCard /> {selectedOrder ? formatCurrency(orderTotals.total) : "0 so'm"}
-              </span>
-            </div>
-          </div>
-
-          <div className="kassa-order-body">
-            {loadingOrder ? (
-              <div className="kassa-loader large">Buyurtma ma’lumotlari yuklanmoqda...</div>
-            ) : selectedOrder ? (
-              <>
-                <div className="kassa-order-items">
-                  {selectedOrder.items.map((item, index) => (
-                    <div key={`${item._id || index}-${item.name}`} className="order-item-card">
-                      <div className="order-item-main">
-                        <div>
-                          <strong>{item.name}</strong>
-                          {item.notes && <span className="order-item-note">{item.notes}</span>}
-                        </div>
-                        <div className="order-item-price">
-                          {formatCurrency((item.price || 0) * (item.qty || 1))}
-                        </div>
-                      </div>
-                      <div className="order-item-meta">
-                        <span>
-                          {item.qty || 1} × {formatCurrency(item.price || 0)}
-                        </span>
-                        {item.modifiers?.length > 0 && (
-                          <div className="order-item-modifiers">
-                            {item.modifiers.map((mod, modIdx) => (
-                              <span key={`${modIdx}-${mod.name}`}>
-                                {mod.name}
-                                {typeof mod.price === "number" && mod.price > 0
-                                  ? ` (+${numberFormatter.format(mod.price)} so'm)`
-                                  : ""}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="kassa-order-summary">
-                  <div className="summary-row">
-                    <span>Jami</span>
-                    <strong>{formatCurrency(orderTotals.subtotal)}</strong>
-                  </div>
-                  <div className="summary-row">
-                    <span>Chegirma</span>
-                    <strong>- {formatCurrency(orderTotals.discount)}</strong>
-                  </div>
-                  <div className="summary-row">
-                    <span>Soliq</span>
-                    <strong>{formatCurrency(orderTotals.tax)}</strong>
-                  </div>
-                  <div className="summary-row total">
-                    <span>Umumiy to‘lov</span>
-                    <strong>{formatCurrency(orderTotals.total)}</strong>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <div className="kassa-empty-order">
-                <FiShoppingCart size={42} />
-                <h3>Aktiv buyurtma topilmadi</h3>
-                <p>
-                  {selectedTable
-                    ? `${selectedTable.name} stolida ochiq buyurtma yo‘q.`
-                    : "Stol tanlang yoki buyurtma yaratish uchun ofitsiantni chaqiring."}
-                </p>
-              </div>
-            )}
-          </div>
-        </section>
 
         <aside className="kassa-panel kassa-right-panel">
           <div className="kassa-payment-card">

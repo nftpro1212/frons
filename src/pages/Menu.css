@@ -1,16 +1,16 @@
 .menu-page {
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  min-height: calc(100vh - 80px);
+  gap: 18px;
+  min-height: calc(100vh - 64px);
 }
 
 .pos-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 18px;
-  padding: 24px 26px;
+  gap: 14px;
+  padding: 16px 18px;
   border-radius: var(--app-radius-md);
   background: var(--app-surface);
   border: 1px solid var(--app-border);
@@ -42,7 +42,7 @@
 
 .pos-search {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
   flex-wrap: wrap;
 }
@@ -54,16 +54,16 @@
 
 .pos-search button,
 .add-food-btn {
-  padding: 0.75rem 1.3rem;
+  padding: 0.6rem 1rem;
   border-radius: var(--app-radius-sm);
 }
 
 .add-food-btn {
   background: linear-gradient(120deg, var(--app-primary), var(--app-accent));
   color: #fff;
-  font-weight: 700;
+  font-weight: 600;
   border: none;
-  box-shadow: 0 12px 32px rgba(255, 0, 60, 0.22);
+  box-shadow: 0 10px 26px rgba(255, 0, 60, 0.2);
   transition: transform var(--app-transition), box-shadow var(--app-transition);
 }
 
@@ -74,8 +74,8 @@
 
 .category-tabs {
   display: flex;
-  gap: 10px;
-  padding: 14px 4px;
+  gap: 8px;
+  padding: 10px 4px;
   overflow-x: auto;
   border-radius: var(--app-radius-sm);
   background: rgba(255, 255, 255, 0.04);
@@ -93,7 +93,7 @@
 }
 
 .tab {
-  padding: 10px 18px;
+  padding: 8px 14px;
   border-radius: 999px;
   border: 1px solid transparent;
   background: rgba(255, 255, 255, 0.06);
@@ -116,31 +116,34 @@
 
 .pos-body {
   display: flex;
-  gap: 20px;
+  gap: 16px;
   min-height: 0;
 }
 
 .menu-grid {
   flex: 1;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 220px));
+  justify-content: center;
+  gap: 14px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--app-radius-md);
-  padding: 18px;
+  padding: 14px;
   box-shadow: var(--app-shadow-soft);
-  min-height: 420px;
+  min-height: 380px;
 }
 
 .menu-card-square {
   background: rgba(6, 8, 24, 0.78);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 20px;
+  border-radius: 14px;
   overflow: hidden;
   cursor: pointer;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  max-width: 220px;
   transition: transform var(--app-transition), box-shadow var(--app-transition), border var(--app-transition);
 }
 
@@ -169,15 +172,15 @@
 }
 
 .card-content-square {
-  padding: 16px 18px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .card-content-square h3 {
   margin: 0;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 700;
 }
 
@@ -187,16 +190,34 @@
   font-weight: 700;
 }
 
+.printer-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.printer-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--app-text-soft);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
 .admin-actions-mini {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   margin-top: auto;
 }
 
 .admin-actions-mini button {
   flex: 1;
-  padding: 8px;
-  border-radius: 12px;
+  padding: 7px;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: rgba(255, 255, 255, 0.06);
   color: #fff;
@@ -210,15 +231,15 @@
 }
 
 .cart-sidebar {
-  width: min(320px, 32%);
+  width: min(280px, 30%);
   background: var(--app-surface);
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-md);
   box-shadow: var(--app-shadow-soft);
-  padding: 20px 22px;
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .cart-sidebar h3 {
@@ -249,9 +270,9 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 0;
+  padding: 10px 0;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  gap: 12px;
+  gap: 10px;
 }
 
 .cart-price {
@@ -263,8 +284,8 @@
 }
 
 .cart-price button {
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   border: none;
   background: rgba(255, 0, 60, 0.2);
@@ -283,19 +304,19 @@
 }
 
 .confirm-btn {
-  margin-top: 8px;
+  margin-top: 6px;
   border-radius: var(--app-radius-sm);
   border: none;
   background: linear-gradient(120deg, var(--app-primary), var(--app-accent));
   color: #fff;
-  padding: 0.9rem 1.2rem;
+  padding: 0.75rem 1.05rem;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 14px 36px rgba(255, 0, 60, 0.22);
+  box-shadow: 0 12px 30px rgba(255, 0, 60, 0.22);
 }
 
 .confirm-btn:hover {
-  box-shadow: 0 16px 46px rgba(255, 0, 60, 0.3);
+  box-shadow: 0 14px 36px rgba(255, 0, 60, 0.28);
 }
 
 .modal-overlay {
@@ -311,27 +332,67 @@
 
 .modal {
   background: rgba(7, 9, 22, 0.94);
-  border-radius: 20px;
-  padding: 24px 26px;
-  width: min(480px, 92%);
+  border-radius: 16px;
+  padding: 18px 20px;
+  width: min(420px, 94%);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.48);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.44);
 }
 
 .modal h3 {
-  margin: 0 0 18px;
-  font-size: 1.4rem;
+  margin: 0 0 14px;
+  font-size: 1.25rem;
 }
 
 .modal input,
 .modal textarea {
-  margin-bottom: 14px;
+  margin-bottom: 10px;
   background: rgba(12, 15, 32, 0.82);
 }
 
 .modal textarea {
   min-height: 90px;
   resize: vertical;
+}
+
+.printer-select {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 10px 0;
+}
+
+.printer-select-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #fff;
+}
+
+.printer-select-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.printer-select-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: border var(--app-transition), background var(--app-transition);
+}
+
+.printer-select-option:hover {
+  border-color: rgba(255, 0, 60, 0.42);
+  background: rgba(255, 0, 60, 0.14);
+}
+
+.printer-select-option input {
+  margin: 0;
 }
 
 .modal-actions {

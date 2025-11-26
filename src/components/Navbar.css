@@ -1,5 +1,5 @@
 .nav-shell {
-  width: 274px;
+  width: clamp(208px, 18vw, 274px);
   min-height: 100vh;
   padding: 28px 24px;
   display: flex;
@@ -220,8 +220,8 @@
 
 @media (max-width: 1180px) {
   .nav-shell {
-    width: 258px;
-    padding: 24px 20px;
+    width: clamp(196px, 20vw, 240px);
+    padding: 24px 18px;
   }
 
   .nav-item {
@@ -235,53 +235,26 @@
   }
 }
 
-@media (max-width: 980px) {
+@media (max-width: 840px) {
   .nav-shell {
-    position: fixed;
-    inset: auto 0 0 0;
-    width: 100%;
-    min-height: 0;
-    height: 74px;
-    flex-direction: row;
-    align-items: center;
-    padding: 0 18px;
-    border-right: none;
-    border-top: 1px solid var(--app-border);
-    box-shadow: 0 -14px 32px rgba(8, 10, 24, 0.4);
-    z-index: 999;
-    gap: 16px;
+    width: clamp(180px, 24vw, 220px);
+    padding: 20px 16px;
+    gap: 22px;
   }
 
-  .nav-shell::before {
-    inset: -20% -20% 0 -20%;
-    background: radial-gradient(120% 120% at 50% 50%, rgba(255, 0, 60, 0.22), transparent 70%);
+  .nav-brand {
+    gap: 10px;
   }
 
-  .nav-brand,
-  .nav-footer {
-    display: none;
-  }
-
-  .nav-list {
-    flex-direction: row;
-    justify-content: space-between;
-    width: 100%;
+  .nav-logo {
+    width: 46px;
+    height: 46px;
   }
 
   .nav-item {
-    flex: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    grid-template-columns: 38px auto;
     gap: 10px;
-    padding: 12px;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.04);
-    border-color: transparent;
-  }
-
-  .nav-item.active {
-    transform: translateY(-6px);
+    padding: 10px 12px;
   }
 
   .nav-icon {
@@ -291,26 +264,43 @@
   }
 
   .nav-text {
-    font-size: 0.75rem;
-  }
-
-  .nav-glow {
-    inset: 12% 18%;
+    font-size: 0.86rem;
   }
 }
 
-@media (max-width: 520px) {
-  .nav-item {
-    gap: 6px;
-    padding: 10px 8px;
+@media (max-width: 600px) {
+  .nav-shell {
+    width: 170px;
+    padding: 18px 14px;
+    gap: 18px;
   }
 
-  .nav-text {
-    font-size: 0.7rem;
+  .nav-item {
+    grid-template-columns: 34px auto;
+    gap: 8px;
+    padding: 9px 10px;
   }
 
   .nav-icon {
     width: 34px;
     height: 34px;
+    font-size: 1rem;
+  }
+
+  .nav-text {
+    font-size: 0.78rem;
+  }
+
+  .nav-brand-name {
+    font-size: 1.1rem;
+  }
+
+  .nav-user-name {
+    font-size: 0.88rem;
+  }
+
+  .nav-user-avatar {
+    width: 40px;
+    height: 40px;
   }
 }

@@ -7,7 +7,14 @@ import api from "../shared/api";
 import defaultFoodImg from "../assets/images/default-food.png";
 import "./Menu.css";
 
-const emptyDraft = { name: "", category: "", description: "", price: "", image: null };
+const emptyDraft = {
+  name: "",
+  category: "",
+  description: "",
+  price: "",
+  image: null,
+  productionPrinterIds: [],
+};
 
 export default function MenuPage() {
   const { user, token } = useAuth();
@@ -24,6 +31,7 @@ export default function MenuPage() {
   const [editDraft, setEditDraft] = useState(emptyDraft);
   const [showEditModal, setShowEditModal] = useState(false);
   const [addMode, setAddMode] = useState(false);
+  const [printerOptions, setPrinterOptions] = useState([]);
 
   const socket = useSocket();
 
@@ -40,10 +48,29 @@ export default function MenuPage() {
     }
   };
 
+  const loadPrinters = async () => {
+    try {
+      const res = await api.get("/settings");
+      const settings = res.data?.printerSettings || {};
+      const printers = Array.isArray(settings.printers)
+        ? settings.printers
+            .filter((printer) => printer && printer._id)
+            .map((printer) => ({
+              ...printer,
+              _id: String(printer._id),
+            }))
+        : [];
+      setPrinterOptions(printers);
+    } catch (err) {
+      console.error("Printerlar ro'yxatini yuklashda xato:", err);
+    }
+  };
+
   useEffect(() => {
     if (!token) return;
     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     loadMenu();
+    loadPrinters();
   }, [token]);
 
   // Table Orders (foydalanuvchi uchun ko‘rinmaydi, faqat fon)
@@ -85,6 +112,16 @@ export default function MenuPage() {
     return menu.filter((i) => (i.category || "Barchasi") === activeCategory);
   }, [menu, activeCategory]);
 
+  const printerLookup = useMemo(() => {
+    const map = new Map();
+    printerOptions.forEach((printer) => {
+      if (!printer) return;
+      const id = printer._id ? String(printer._id) : null;
+      if (id) map.set(id, printer);
+    });
+    return map;
+  }, [printerOptions]);
+
   const addToCart = (item) => {
     if (!isWaiter) return;
     setCart((prev) => {
@@ -114,7 +151,7 @@ export default function MenuPage() {
   const handleAddClick = () => {
     setAddMode(true);
     setEditItem(null);
-    setEditDraft(emptyDraft);
+    setEditDraft({ ...emptyDraft, productionPrinterIds: [] });
     setShowEditModal(true);
   };
 
@@ -127,6 +164,9 @@ export default function MenuPage() {
       description: item.description || "",
       price: item.price,
       image: null,
+      productionPrinterIds: Array.isArray(item.productionPrinterIds)
+        ? item.productionPrinterIds.map(String)
+        : [],
     });
     setShowEditModal(true);
   };
@@ -150,6 +190,7 @@ export default function MenuPage() {
           description: editDraft.description,
           price: parseFloat(editDraft.price),
           imageUrl,
+          productionPrinterIds: editDraft.productionPrinterIds,
         });
       } else {
         await api.put(`/menu/${editItem._id}`, {
@@ -158,11 +199,12 @@ export default function MenuPage() {
           description: editDraft.description,
           price: parseFloat(editDraft.price),
           imageUrl,
+          productionPrinterIds: editDraft.productionPrinterIds,
         });
       }
       setShowEditModal(false);
       setEditItem(null);
-      setEditDraft(emptyDraft);
+      setEditDraft({ ...emptyDraft, productionPrinterIds: [] });
       setAddMode(false);
       loadMenu();
     } catch (err) {
@@ -178,6 +220,17 @@ export default function MenuPage() {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  const togglePrinterSelection = (printerId) => {
+    setEditDraft((prev) => {
+      const current = Array.isArray(prev.productionPrinterIds) ? prev.productionPrinterIds : [];
+      const id = String(printerId);
+      if (current.includes(id)) {
+        return { ...prev, productionPrinterIds: current.filter((pid) => pid !== id) };
+      }
+      return { ...prev, productionPrinterIds: [...current, id] };
+    });
   };
 
   return (
@@ -247,6 +300,19 @@ export default function MenuPage() {
                 <div className="card-content-square">
                   <h3>{item.name}</h3>
                   <p className="price">{priceFormatter.format(item.price)} so‘m</p>
+                  {isAdmin && Array.isArray(item.productionPrinterIds) && item.productionPrinterIds.length > 0 && (
+                    <div className="printer-tags">
+                      {item.productionPrinterIds.map((pid) => {
+                        const printer = printerLookup.get(String(pid));
+                        return (
+                          <span key={pid} className="printer-tag">
+                            {printer?.name || "Printer"}
+                            {printer?.role ? ` • ${printer.role}` : ""}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                   {isAdmin && (
                     <div className="admin-actions-mini">
                       <button onClick={(e) => { e.stopPropagation(); handleEditClick(item); }}>Tahrirlash</button>
@@ -331,6 +397,26 @@ export default function MenuPage() {
               accept="image/*"
               onChange={(e) => setEditDraft({ ...editDraft, image: e.target.files[0] })}
             />
+            {printerOptions.length > 0 && (
+              <div className="printer-select">
+                <span className="printer-select-title">Chek printerlari</span>
+                <div className="printer-select-grid">
+                  {printerOptions.map((printer) => (
+                    <label key={printer._id} className="printer-select-option">
+                      <input
+                        type="checkbox"
+                        checked={editDraft.productionPrinterIds?.includes(String(printer._id)) || false}
+                        onChange={() => togglePrinterSelection(printer._id)}
+                      />
+                      <span>
+                        {printer.name}
+                        {printer.role ? ` (${printer.role})` : ""}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="modal-actions">
               <button onClick={handleEditSave}>{addMode ? "Qo'shish" : "Saqlash"}</button>
               <button onClick={() => { setShowEditModal(false); setAddMode(false); }}>Bekor qilish</button>

@@ -1,8 +1,8 @@
 .dash-wrapper {
   display: flex;
   flex-direction: column;
-  gap: 24px;
-  min-height: calc(100vh - 80px);
+  gap: 16px;
+  min-height: 100%;
 }
 
 .dash-header {
@@ -12,9 +12,9 @@
   background: var(--app-surface);
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-md);
-  padding: 26px 28px;
+  padding: 16px 18px;
   box-shadow: var(--app-shadow-soft);
-  gap: 24px;
+  gap: 16px;
 }
 
 .dash-header-copy {
@@ -22,7 +22,7 @@
 }
 
 .dash-header .title {
-  font-size: clamp(2rem, 3vw, 2.6rem);
+  font-size: clamp(1.75rem, 2.4vw, 2.2rem);
   font-weight: 800;
   margin: 0;
   color: var(--app-primary);
@@ -31,15 +31,15 @@
 
 .role-summary {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 18px;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
 }
 
 .summary-card {
   background: var(--app-surface);
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-md);
-  padding: 24px 20px;
+  padding: 16px 18px;
   box-shadow: var(--app-shadow-soft);
   backdrop-filter: var(--app-blur);
   transition: transform var(--app-transition), box-shadow var(--app-transition);
@@ -53,24 +53,24 @@
 .summary-label {
   margin: 0;
   color: var(--app-muted);
-  font-size: 0.95rem;
+  font-size: 0.82rem;
 }
 
 .summary-value {
   margin: 0;
-  font-size: 2rem;
+  font-size: 1.6rem;
   font-weight: 800;
   color: #fff;
 }
 
 .role-actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
 }
 
 .action-card {
-  padding: 20px 18px;
+  padding: 14px 16px;
   border-radius: var(--app-radius-md);
   border: 1px solid rgba(255, 255, 255, 0.08);
   background: linear-gradient(135deg, rgba(255, 0, 60, 0.14), rgba(6, 7, 24, 0.18));
@@ -99,24 +99,24 @@
 }
 
 .dashboard-table-wrap {
-  margin: 12px 0 8px;
+  margin: 8px 0;
 }
 
 .orders-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 18px;
-  padding-bottom: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+  padding-bottom: 12px;
 }
 
 .order-card {
   background: var(--app-surface);
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-md);
-  padding: 22px 20px;
+  padding: 16px 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   box-shadow: var(--app-shadow-soft);
   transition: transform var(--app-transition), box-shadow var(--app-transition);
 }
@@ -136,14 +136,14 @@
 
 .table-number {
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1rem;
   color: #fff;
 }
 
 .status-badge {
   border-radius: 999px;
-  padding: 6px 14px;
-  font-size: 0.78rem;
+  padding: 4px 10px;
+  font-size: 0.72rem;
   font-weight: 600;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -160,7 +160,7 @@
 .items-count {
   margin: 0;
   color: var(--app-text-soft);
-  font-size: 0.95rem;
+  font-size: 0.85rem;
 }
 
 .items-preview {
@@ -185,7 +185,7 @@
 .no-orders {
   grid-column: 1 / -1;
   text-align: center;
-  padding: 26px 18px;
+  padding: 18px 14px;
   background: rgba(255, 255, 255, 0.04);
   border-radius: var(--app-radius-md);
   color: var(--app-muted);
@@ -195,12 +195,7 @@
   .dash-header {
     flex-direction: column;
     align-items: flex-start;
-  }
-
-  .dash-header-right {
-    width: 100%;
-    justify-content: space-between;
-    gap: 16px;
+    gap: 12px;
   }
 
   .counter {
@@ -209,7 +204,7 @@
   }
 
   .orders-grid {
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   }
 }
 
@@ -222,14 +217,10 @@
 
 @media (max-width: 720px) {
   .role-summary {
-    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   }
 
   .orders-grid {
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  }
-
-  .title {
-    font-size: clamp(1.8rem, 4vw, 2.2rem);
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   }
 }

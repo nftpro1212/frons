@@ -19,6 +19,8 @@ export default function Layout({ children }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const roleLabel = ROLE_LABELS[user?.role] || (user?.role ? user.role : "—");
+  const contentClass = hideNavbar ? "layout-content no-navbar" : "layout-content";
+  const mainBoxClass = hideNavbar ? "layout-main-box no-navbar" : "layout-main-box";
 
   const handleBack = () => {
     if (window.history.length > 1) {
@@ -31,35 +33,39 @@ export default function Layout({ children }) {
   return (
     <div className={hideNavbar ? "layout-shell no-navbar" : "layout-shell"}>
       {!hideNavbar && <Navbar />}
-      {!hideNavbar && (
-        <div className="layout-floating-controls">
-          <button
-            type="button"
-            className="layout-back-btn"
-            title="Orqaga qaytish"
-            onClick={handleBack}
-          >
-            <FiArrowLeft />
-          </button>
-          <div className="layout-user-panel">
-            <div className="layout-user-meta">
-              <span className="layout-user-label">Aktiv rol</span>
-              <strong className="layout-user-role">{roleLabel}</strong>
-              {user?.name && <span className="layout-user-name">{user.name}</span>}
+      <main className={contentClass}>
+        <div className={mainBoxClass}>
+          {!hideNavbar && (
+            <div className="layout-main-header">
+              <div className="layout-main-actions">
+                <button
+                  type="button"
+                  className="layout-back-btn"
+                  title="Orqaga qaytish"
+                  onClick={handleBack}
+                >
+                  <FiArrowLeft />
+                </button>
+              </div>
+              <div className="layout-user-panel">
+                <div className="layout-user-meta">
+                  <span className="layout-user-label">Aktiv rol</span>
+                  <strong className="layout-user-role">{roleLabel}</strong>
+                  {user?.name && <span className="layout-user-name">{user.name}</span>}
+                </div>
+                <button
+                  type="button"
+                  className="layout-power-btn"
+                  title="Foydalanuvchini almashtirish"
+                  onClick={() => navigate("/select-user")}
+                >
+                  <FaPowerOff />
+                </button>
+              </div>
             </div>
-            <button
-              type="button"
-              className="layout-power-btn"
-              title="Foydalanuvchini almashtirish"
-              onClick={() => navigate("/select-user")}
-            >
-              <FaPowerOff />
-            </button>
-          </div>
+          )}
+          {children}
         </div>
-      )}
-      <main className={hideNavbar ? "layout-content no-navbar" : "layout-content with-controls"}>
-        {children}
       </main>
     </div>
   );
