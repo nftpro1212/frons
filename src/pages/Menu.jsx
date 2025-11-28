@@ -144,6 +144,8 @@ export default function MenuPage() {
       setCart([]);
       fetchTableOrders();
     } catch (err) {
+      const message = err?.response?.data?.message || "Buyurtmani yuborib bo'lmadi";
+      window.alert(message);
       console.error(err);
     }
   };

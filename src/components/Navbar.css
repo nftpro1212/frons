@@ -1,18 +1,22 @@
 .nav-shell {
-  width: clamp(208px, 18vw, 274px);
-  min-height: 100vh;
+  width: var(--nav-width, clamp(208px, 18vw, 274px));
   padding: 28px 24px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: 28px;
-  position: sticky;
-  top: 0;
+  position: fixed;
+  top: 32px;
+  left: 36px;
+  bottom: 32px;
   background: var(--app-surface);
-  border-right: 1px solid var(--app-border);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
   box-shadow: var(--app-shadow-soft);
   backdrop-filter: var(--app-blur);
-  transition: width var(--app-transition), padding var(--app-transition);
+  transition: width var(--app-transition), padding var(--app-transition), left var(--app-transition), top var(--app-transition);
+  overflow: hidden;
+  z-index: 20;
 }
 
 .nav-shell::before {
@@ -20,7 +24,7 @@
   position: absolute;
   inset: 0;
   pointer-events: none;
-  border-radius: 0;
+  border-radius: inherit;
   background: radial-gradient(120% 120% at 10% 0%, rgba(255, 0, 60, 0.14), transparent 60%),
     radial-gradient(120% 120% at 90% 14%, rgba(99, 102, 241, 0.16), transparent 68%);
   mix-blend-mode: screen;
@@ -189,13 +193,6 @@
   font-weight: 600;
 }
 
-.nav-user-role {
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: var(--app-muted);
-}
-
 .nav-logout {
   display: flex;
   align-items: center;
@@ -220,8 +217,10 @@
 
 @media (max-width: 1180px) {
   .nav-shell {
-    width: clamp(196px, 20vw, 240px);
     padding: 24px 18px;
+    top: 24px;
+    left: 24px;
+    bottom: 24px;
   }
 
   .nav-item {
@@ -235,11 +234,19 @@
   }
 }
 
+@media (max-width: 920px) {
+  .nav-shell {
+    left: 20px;
+  }
+}
+
 @media (max-width: 840px) {
   .nav-shell {
-    width: clamp(180px, 24vw, 220px);
     padding: 20px 16px;
     gap: 22px;
+    top: 24px;
+    left: 20px;
+    bottom: 24px;
   }
 
   .nav-brand {
@@ -270,9 +277,11 @@
 
 @media (max-width: 600px) {
   .nav-shell {
-    width: 170px;
     padding: 18px 14px;
     gap: 18px;
+    top: 18px;
+    left: 14px;
+    bottom: 18px;
   }
 
   .nav-item {

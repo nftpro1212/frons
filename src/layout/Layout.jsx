@@ -32,7 +32,11 @@ export default function Layout({ children }) {
 
   return (
     <div className={hideNavbar ? "layout-shell no-navbar" : "layout-shell"}>
-      {!hideNavbar && <Navbar />}
+      {!hideNavbar && (
+        <div className="layout-nav-spacer">
+          <Navbar />
+        </div>
+      )}
       <main className={contentClass}>
         <div className={mainBoxClass}>
           {!hideNavbar && (

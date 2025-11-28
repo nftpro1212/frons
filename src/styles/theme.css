@@ -35,6 +35,10 @@ html, body, #root {
   min-height: 100%;
 }
 
+html {
+  overflow-x: hidden;
+}
+
 body {
   margin: 0;
   font-family: inherit;
@@ -42,6 +46,8 @@ body {
   background: var(--app-bg);
   color: var(--app-text);
   -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 a {

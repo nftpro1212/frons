@@ -89,7 +89,6 @@ export default function Navbar() {
           <div className="nav-user-avatar">{initials}</div>
           <div className="nav-user-meta">
             <span className="nav-user-name">{user?.name || "Administrator"}</span>
-            <span className="nav-user-role">{user?.role || "admin"}</span>
           </div>
         </div>
       </div>

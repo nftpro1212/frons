@@ -110,13 +110,33 @@
   text-overflow: ellipsis;
 }
 
+.table-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  position: relative;
+  z-index: 1;
+}
+
 .table-id {
   margin: 0;
   font-size: 0.9rem;
   color: var(--app-muted);
   letter-spacing: 0.18em;
-  position: relative;
-  z-index: 1;
+}
+
+.table-category-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.3rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: 0.78rem;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--app-text);
+  text-transform: capitalize;
 }
 
 .status-pill {
@@ -153,6 +173,62 @@
   background: rgba(255, 0, 60, 0.16);
   color: var(--app-primary);
   border-color: rgba(255, 0, 60, 0.35);
+}
+
+.table-card.locked {
+  border-color: rgba(255, 0, 60, 0.5);
+}
+
+.table-card.owned {
+  border-color: rgba(34, 211, 166, 0.5);
+}
+
+.table-assignment {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border-radius: var(--app-radius-sm);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  position: relative;
+  z-index: 1;
+}
+
+.table-assignment.own {
+  background: rgba(34, 211, 166, 0.14);
+  border-color: rgba(34, 211, 166, 0.4);
+}
+
+.table-assignment.locked {
+  background: rgba(255, 0, 60, 0.12);
+  border-color: rgba(255, 0, 60, 0.4);
+}
+
+.table-assignment-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--app-muted);
+}
+
+.table-assignment-name {
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.table-assignment-note {
+  font-size: 0.76rem;
+  color: var(--app-muted);
+}
+
+.table-assignment.locked .table-assignment-note {
+  color: var(--app-primary);
+}
+
+.table-assignment.own .table-assignment-note {
+  color: var(--app-success);
 }
 
 .table-admin-actions {
