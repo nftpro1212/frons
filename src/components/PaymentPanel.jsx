@@ -32,8 +32,30 @@ const PaymentPanel = ({ order, onPaid }) => {
     [numberFormatter]
   );
 
+  const orderItems = useMemo(() => {
+    if (!Array.isArray(order?.items)) return [];
+    return order.items.map((item, index) => {
+      const qty = Number(item?.qty ?? 0) || 0;
+      const price = Number(item?.price ?? 0) || 0;
+      const total = qty * price;
+      const modifiers = Array.isArray(item?.modifiers) ? item.modifiers : [];
+      return {
+        key: item?._id || `${index}-${item?.name || "item"}`,
+        name: item?.name || "Pozitsiya",
+        qty,
+        price,
+        total,
+        notes: item?.notes || "",
+        modifiers: modifiers
+          .filter(Boolean)
+          .map((mod) => (typeof mod === "string" ? mod : mod?.name))
+          .filter(Boolean),
+      };
+    });
+  }, [order?.items]);
+
   const totals = useMemo(() => {
-    const items = Array.isArray(order?.items) ? order.items : [];
+    const items = orderItems;
     const subtotal =
       typeof order?.subtotal === "number"
         ? order.subtotal
@@ -55,7 +77,7 @@ const PaymentPanel = ({ order, onPaid }) => {
       totalDue,
       itemCount,
     };
-  }, [order]);
+  }, [order, orderItems]);
 
   const maxDiscount = totals.totalBeforeDiscount;
 
@@ -299,6 +321,62 @@ const PaymentPanel = ({ order, onPaid }) => {
           <strong>{formatCurrency(amount)}</strong>
         </div>
       </div>
+
+      {order?._id && (
+        <div className="payment-items-card">
+          <div className="payment-items-head">
+            <div>
+              <span className="payment-section-label">Buyurtma pozitsiyalari</span>
+              <p>
+                {orderItems.length > 0
+                  ? `${orderItems.length} ta nom, ${totals.itemCount} dona`
+                  : "Pozitsiyalar hali qo'shilmagan"}
+              </p>
+            </div>
+            <span className="payment-items-total">{formatCurrency(totals.subtotal)}</span>
+          </div>
+          {orderItems.length > 0 ? (
+            <div className="payment-items-scroll">
+              <table className="payment-items-table">
+                <thead>
+                  <tr>
+                    <th>Taom</th>
+                    <th className="align-center">Soni</th>
+                    <th className="align-right">Narx</th>
+                    <th className="align-right">Jami</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orderItems.map((item) => (
+                    <React.Fragment key={item.key}>
+                      <tr>
+                        <td>
+                          <strong className="payment-item-name">{item.name}</strong>
+                          {item.modifiers.length > 0 && (
+                            <span className="payment-item-meta">{item.modifiers.join(", ")}</span>
+                          )}
+                        </td>
+                        <td className="align-center">{item.qty}</td>
+                        <td className="align-right">{formatCurrency(item.price)}</td>
+                        <td className="align-right">{formatCurrency(item.total)}</td>
+                      </tr>
+                      {item.notes && (
+                        <tr className="payment-item-notes-row">
+                          <td colSpan={4} className="payment-item-notes">
+                            {item.notes}
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="payment-items-empty">Bu buyurtmada pozitsiyalar mavjud emas.</div>
+          )}
+        </div>
+      )}
 
       <div className="payment-method-section">
         <span className="payment-section-label">To'lov turi</span>

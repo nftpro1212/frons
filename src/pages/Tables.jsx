@@ -44,14 +44,18 @@ export default function TablesPage() {
     fetchTables();
   }, [token]);
 
-  const fetchTables = async () => {
+  const fetchTables = async (options = {}) => {
+    const { suppressAlertReset = false } = options;
     setLoading(true);
     try {
       const res = await api.get("/tables");
       setTables(res.data);
-      setAlert("");
+      if (!suppressAlertReset) {
+        setAlert("");
+      }
     } catch (err) {
-      setAlert("Stollarni yuklashda xatolik");
+      const message = err?.response?.data?.message || "Stollarni yuklashda xatolik";
+      setAlert(message);
     } finally {
       setLoading(false);
     }
@@ -83,10 +87,11 @@ export default function TablesPage() {
     try {
       await api.post("/tables", { name: newTable.trim(), category: newCategory });
       setNewTable("");
-      fetchTables();
+      await fetchTables({ suppressAlertReset: true });
       setAlert("Yangi stol qo‘shildi");
     } catch (err) {
-      setAlert("Stol yaratishda xato");
+      const message = err?.response?.data?.message || "Stol yaratishda xato";
+      setAlert(message);
     }
   };
 

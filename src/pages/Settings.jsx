@@ -16,6 +16,26 @@ const isValidObjectId = (value) => typeof value === "string" && /^[a-fA-F0-9]{24
 
 const createClientId = () => `printer-${Math.random().toString(36).slice(2, 10)}`;
 
+const toPercentValue = (value) => {
+  if (value === undefined || value === null) return undefined;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return undefined;
+  const clamped = Math.max(0, numeric);
+  if (clamped === 0) return 0;
+  const percent = clamped <= 1 ? clamped * 100 : clamped;
+  return Number(percent.toFixed(4));
+};
+
+const toDecimalValue = (value) => {
+  if (value === undefined || value === null) return undefined;
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return undefined;
+  const clamped = Math.max(0, numeric);
+  if (clamped === 0) return 0;
+  const decimal = clamped > 1 ? clamped / 100 : clamped;
+  return Number(decimal.toFixed(6));
+};
+
 const BASE_RECEIPT_TEMPLATE = {
   fontFamily: "monospace",
   fontSize: 13,
@@ -310,16 +330,18 @@ const normalizeSettingsData = (data = {}) => {
   };
 
   const taxSettings = data.taxSettings || {};
+  const serviceChargePercent = toPercentValue(taxSettings.serviceCharge);
+  const taxRatePercentFromRate = toPercentValue(taxSettings.taxRate);
+  const effectiveTaxPercent =
+    serviceChargePercent !== undefined ? serviceChargePercent : taxRatePercentFromRate;
   normalized.tax = {
     ...normalized.tax,
     enabled: taxSettings.enabled ?? normalized.tax.enabled,
     includeInPrice: taxSettings.includeInPrice ?? normalized.tax.includeInPrice,
     taxName: taxSettings.taxName ?? normalized.tax.taxName,
-    taxRate: Number.isFinite(Number(taxSettings.taxRate)) ? Number(taxSettings.taxRate) : normalized.tax.taxRate,
+    taxRate: effectiveTaxPercent ?? normalized.tax.taxRate,
     serviceChargeEnabled: taxSettings.serviceChargeEnabled ?? normalized.tax.serviceChargeEnabled,
-    serviceCharge: Number.isFinite(Number(taxSettings.serviceCharge))
-      ? Number(taxSettings.serviceCharge)
-      : normalized.tax.serviceCharge,
+    serviceCharge: serviceChargePercent ?? effectiveTaxPercent ?? normalized.tax.serviceCharge,
     showOnReceipt: taxSettings.showOnReceipt ?? normalized.tax.showOnReceipt,
   };
 
@@ -516,6 +538,10 @@ const sanitizePrinterSettings = (currentSettings, rawSettings = {}) => {
 };
 
 const sanitizeSettingsForSave = (currentSettings) => {
+  const servicePercentRaw =
+    currentSettings.tax?.serviceCharge ?? currentSettings.tax?.taxRate ?? 0;
+  const serviceDecimal = toDecimalValue(servicePercentRaw);
+
   const payload = {
     restaurantName: currentSettings.general?.restaurantName || "",
     currency: currentSettings.general?.currency || "UZS",
@@ -551,9 +577,9 @@ const sanitizeSettingsForSave = (currentSettings) => {
       ),
       includeInPrice: Boolean(currentSettings.tax?.includeInPrice),
       taxName: currentSettings.tax?.taxName || "",
-      taxRate: Number(currentSettings.tax?.serviceCharge ?? currentSettings.tax?.taxRate ?? 0),
+      taxRate: serviceDecimal ?? 0,
       serviceChargeEnabled: Boolean(currentSettings.tax?.serviceChargeEnabled),
-      serviceCharge: Number(currentSettings.tax?.serviceCharge ?? currentSettings.tax?.taxRate ?? 0),
+      serviceCharge: serviceDecimal ?? 0,
       showOnReceipt: Boolean(currentSettings.tax?.showOnReceipt),
     },
     taxIntegration: {

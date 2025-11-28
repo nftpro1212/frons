@@ -120,6 +120,116 @@
   box-shadow: 0 12px 28px rgba(255, 0, 60, 0.18);
 }
 
+.payment-items-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 0.75rem 0.9rem;
+  border-radius: var(--app-radius-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  position: relative;
+  z-index: 1;
+}
+
+.payment-items-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.payment-items-head p {
+  margin: 2px 0 0;
+  font-size: 0.74rem;
+  color: var(--app-text-soft);
+}
+
+.payment-items-total {
+  font-weight: 700;
+  font-size: 0.96rem;
+  color: #fff;
+}
+
+.payment-items-scroll {
+  max-height: 240px;
+  overflow-y: auto;
+  border-radius: calc(var(--app-radius-sm) - 4px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.payment-items-empty {
+  padding: 0.75rem;
+  border-radius: calc(var(--app-radius-sm) - 4px);
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  background: rgba(15, 18, 36, 0.4);
+  font-size: 0.75rem;
+  color: var(--app-muted);
+  text-align: center;
+}
+
+.payment-items-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.payment-items-table thead th {
+  position: sticky;
+  top: 0;
+  background: rgba(15, 18, 36, 0.92);
+  padding: 0.55rem 0.65rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--app-muted);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.payment-items-table tbody tr:not(.payment-item-notes-row) {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.payment-items-table td {
+  padding: 0.6rem 0.65rem;
+  color: var(--app-text);
+  vertical-align: top;
+}
+
+.payment-item-name {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.payment-item-meta {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.7rem;
+  color: var(--app-muted);
+}
+
+.payment-item-notes-row td {
+  padding-top: 0;
+  padding-bottom: 0.6rem;
+}
+
+.payment-item-notes {
+  font-size: 0.72rem;
+  color: var(--app-text-soft);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: calc(var(--app-radius-sm) - 4px);
+  padding: 0.45rem 0.55rem;
+}
+
+.align-center {
+  text-align: center;
+}
+
+.align-right {
+  text-align: right;
+}
+
 .payment-method-section {
   display: flex;
   flex-direction: column;

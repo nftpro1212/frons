@@ -17,6 +17,37 @@
   position: relative;
 }
 
+body.electron-shell {
+  overflow: hidden;
+}
+
+body.electron-shell .layout-shell {
+  height: 100vh;
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+body.electron-shell .layout-content {
+  height: 100%;
+  min-height: 100%;
+  overflow-y: auto;
+  padding-right: 4px;
+  scrollbar-width: none;
+}
+
+body.electron-shell .layout-main-box {
+  margin: 12px auto 12px;
+}
+
+body.electron-shell .layout-content::-webkit-scrollbar {
+  display: none;
+}
+
+body.electron-shell .layout-shell.no-navbar .layout-main-box,
+body.electron-shell .layout-content.no-navbar .layout-main-box {
+  margin: 0;
+}
+
 @media (max-width: 1180px) {
   .layout-shell {
     --nav-width: clamp(196px, 20vw, 240px);

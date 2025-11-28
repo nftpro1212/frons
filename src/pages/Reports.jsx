@@ -6,6 +6,7 @@ import {
   FaPercent,
   FaCircle,
   FaSync,
+  FaFileExcel,
 } from "react-icons/fa";
 import api from "../shared/api";
 import ReportChart from "../components/ReportChart.jsx";
@@ -15,6 +16,8 @@ const formatCurrency = (value) =>
   new Intl.NumberFormat("uz-UZ").format(Math.round(Number(value) || 0));
 
 const formatPercent = (value) => `${(value * 100).toFixed(0)}%`;
+
+const formatNumber = (value) => new Intl.NumberFormat("uz-UZ").format(Math.round(Number(value) || 0));
 
 const PAYMENT_LABELS = {
   cash: "Naqd",
@@ -37,6 +40,14 @@ const TYPE_LABELS = {
   table: "Zalda",
   delivery: "Dostavka",
   soboy: "Olib ketish",
+};
+
+const ROLE_LABELS = {
+  admin: "Administrator",
+  kassir: "Kassir",
+  ofitsiant: "Ofitsiant",
+  oshpaz: "Oshpaz",
+  omborchi: "Omborchi",
 };
 
 const resolveRange = (preset) => {
@@ -85,6 +96,7 @@ export default function ReportsPage() {
   const [rangeKey, setRangeKey] = useState("last7");
   const [activeRange, setActiveRange] = useState(() => resolveRange("last7"));
   const [customRange, setCustomRange] = useState({ from: "", to: "" });
+  const [exporting, setExporting] = useState(false);
 
   const fetchReport = useCallback(async (range) => {
     if (!range?.from || !range?.to) return;
@@ -139,6 +151,39 @@ export default function ReportsPage() {
     setActiveRange(nextRange);
   }, [activeRange, fetchReport, rangeKey]);
 
+  const downloadExcel = useCallback(async () => {
+    if (!activeRange?.from || !activeRange?.to) return;
+    setExporting(true);
+    try {
+      const response = await api.get("/reports/sales/export", {
+        params: {
+          from: activeRange.from.toISOString(),
+          to: activeRange.to.toISOString(),
+        },
+        responseType: "blob",
+      });
+
+      const blob = new Blob([response.data], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const from = activeRange.from.toISOString().slice(0, 10);
+      const to = activeRange.to.toISOString().slice(0, 10);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `hisobot-${from}-${to}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Excel export error", err);
+      setError("Excel faylini yuklab bo‘lmadi. Iltimos, qayta urining.");
+    } finally {
+      setExporting(false);
+    }
+  }, [activeRange, setError]);
+
   const rangeLabel = useMemo(() => {
     if (!activeRange?.from || !activeRange?.to) return "-";
     const formatter = new Intl.DateTimeFormat("uz-UZ", {
@@ -190,6 +235,8 @@ export default function ReportsPage() {
   }, [report]);
 
   const recentOrders = report?.recentOrders ?? [];
+  const menuItems = useMemo(() => report?.detail?.menuItems ?? [], [report]);
+  const waiterStats = useMemo(() => report?.detail?.waiters ?? [], [report]);
 
   return (
     <div className="page-shell reports-shell">
@@ -241,6 +288,15 @@ export default function ReportsPage() {
             >
               <FaSync className="reports-refresh-icon" />
               {loading ? "Yangilanmoqda..." : "Yangilash"}
+            </button>
+            <button
+              type="button"
+              className={`btn-primary reports-export${exporting ? " is-busy" : ""}`}
+              onClick={downloadExcel}
+              disabled={loading || exporting}
+            >
+              <FaFileExcel className="reports-export-icon" />
+              {exporting ? "Yuklanmoqda..." : "Excelga yuklash"}
             </button>
           </div>
         </div>
@@ -427,6 +483,87 @@ export default function ReportsPage() {
                     <td>{STATUS_LABELS[order.status] || order.status}</td>
                     <td>{formatCurrency(order.discount || 0)} so‘m</td>
                     <td>{formatCurrency(order.total || 0)} so‘m</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <section className="reports-detail-grid">
+        <article className="glass-panel reports-menu-card">
+          <header className="reports-card-head">
+            <h3>Taomlar bo‘yicha sarhisob</h3>
+            <span>{menuItems.length} ta pozitsiya</span>
+          </header>
+          <div className="table-scroll reports-table-scroll">
+            <table className="reports-table">
+              <thead>
+                <tr>
+                  <th>Taom</th>
+                  <th>Buyurtma</th>
+                  <th>Soni</th>
+                  <th>O‘rtacha narx</th>
+                  <th>Tushum</th>
+                </tr>
+              </thead>
+              <tbody>
+                {menuItems.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="reports-empty">Ma'lumot mavjud emas</td>
+                  </tr>
+                )}
+                {menuItems.map((item) => (
+                  <tr key={item.menuItemId || item.name}>
+                    <td>{item.name}</td>
+                    <td>{formatNumber(item.orderCount)}</td>
+                    <td>{formatNumber(item.quantity)}</td>
+                    <td>{formatCurrency(item.averagePrice)} so‘m</td>
+                    <td>{formatCurrency(item.revenue)} so‘m</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article className="glass-panel reports-waiter-card">
+          <header className="reports-card-head">
+            <h3>Ofitsiantlar hisobot</h3>
+            <span>{waiterStats.length} ta xodim</span>
+          </header>
+          <div className="table-scroll reports-table-scroll">
+            <table className="reports-table">
+              <thead>
+                <tr>
+                  <th>Ofitsiant</th>
+                  <th>Buyurtma</th>
+                  <th>Stol</th>
+                  <th>Pozitsiya</th>
+                  <th>Net tushum</th>
+                  <th>O‘rtacha chek</th>
+                </tr>
+              </thead>
+              <tbody>
+                {waiterStats.length === 0 && (
+                  <tr>
+                    <td colSpan={6} className="reports-empty">Ma'lumot mavjud emas</td>
+                  </tr>
+                )}
+                {waiterStats.map((waiter) => (
+                  <tr key={waiter.userId}>
+                    <td>
+                      <div className="reports-waiter-cell">
+                        <span className="reports-waiter-name">{waiter.name}</span>
+                        <span className="reports-waiter-meta">{ROLE_LABELS[waiter.role] || waiter.role}</span>
+                      </div>
+                    </td>
+                    <td>{formatNumber(waiter.orderCount)}</td>
+                    <td>{formatNumber(waiter.tablesServed)}</td>
+                    <td>{formatNumber(waiter.itemsSold)}</td>
+                    <td>{formatCurrency(waiter.netSales)} so‘m</td>
+                    <td>{formatCurrency(waiter.averageOrderValue)} so‘m</td>
                   </tr>
                 ))}
               </tbody>
