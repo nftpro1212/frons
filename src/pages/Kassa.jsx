@@ -6,6 +6,7 @@ import {
   FiFilter,
   FiLayers,
   FiGrid,
+  FiLock,
   FiPrinter,
   FiRefreshCcw,
   FiSearch,
@@ -47,6 +48,93 @@ const TABLE_STATUS_LABELS = {
 };
 
 const STATUS_ORDER = { free: 2, reserved: 1, occupied: 0 };
+
+const isOrderActive = (order) => {
+  if (!order) return false;
+  const terminalStatuses = new Set(["closed", "cancelled"]);
+  return !terminalStatuses.has(order.status);
+};
+
+const resolveVirtualOrderType = (order) => {
+  if (!order) return "delivery";
+  if (order.type === "soboy") return "soboy";
+  if (order.type === "delivery") return "delivery";
+  if (order.isDelivery) return "delivery";
+  return "soboy";
+};
+
+const formatVirtualOrderMeta = (order) => {
+  const formatter = new Intl.NumberFormat("uz-UZ");
+  const totalRaw = Number.isFinite(Number(order?.total))
+    ? Number(order.total)
+    : Number(order?.subtotal || 0) + Number(order?.tax || 0) - Number(order?.discount || 0);
+  const total = Math.max(0, Math.round(totalRaw || 0));
+  const parts = [];
+  if (total > 0) parts.push(`${formatter.format(total)} so'm`);
+  const phone = order?.customer?.phone || order?.deliveryPhone || order?.phone;
+  if (phone) parts.push(phone);
+  const address = order?.deliveryAddress || order?.deliveryDetails?.address;
+  if (address) parts.push(address);
+  return parts.join(" · ");
+};
+
+const mapVirtualOrderToTable = (order) => {
+  if (!order?._id) return null;
+  const type = resolveVirtualOrderType(order);
+  const baseLabel = type === "soboy" ? "Soboy" : "Dostavka";
+  const customerName = order?.customer?.name || order?.customerName || order?.tableName || "Buyurtma";
+  const shortId = order?.shortId
+    || order?.displayId
+    || order?.orderNumber
+    || order?._id?.slice(-6)?.toUpperCase()
+    || "";
+  const name = customerName ? `${baseLabel}: ${customerName}` : `${baseLabel} ${shortId}`.trim();
+  const meta = formatVirtualOrderMeta(order);
+  return {
+    _id: `virtual-${order._id}`,
+    name,
+    code: shortId,
+    status: "occupied",
+    category: baseLabel,
+    isVirtual: true,
+    virtualType: type,
+    linkedOrder: {
+      ...order,
+      items: Array.isArray(order?.items) ? order.items : [],
+    },
+    virtualMeta: {
+      meta,
+      customerName,
+    },
+    sortTimestamp: order?.createdAt ? new Date(order.createdAt).getTime() : 0,
+  };
+};
+
+const getAssignedInfo = (table) => {
+  const assignedRaw = table?.assignedTo?._id || table?.assignedTo;
+  let id = null;
+  if (assignedRaw) {
+    try {
+      id = typeof assignedRaw === "string" ? assignedRaw : assignedRaw.toString();
+    } catch (error) {
+      id = null;
+    }
+  }
+
+  return {
+    id,
+    name: table?.assignedTo?.name || table?.assignedToName || "",
+  };
+};
+
+const isTableLockedForUser = (table, currentUserId, isManager) => {
+  if (!table || table.isVirtual) return false;
+  if (isManager) return false;
+  if (!currentUserId) return false;
+  const { id } = getAssignedInfo(table);
+  if (!id) return false;
+  return id !== currentUserId;
+};
 
 const getTableCategory = (table) => {
   if (!table) return "Boshqa";
@@ -103,6 +191,7 @@ const Kassa = () => {
   const { user } = useAuth();
 
   const [tables, setTables] = useState([]);
+  const [virtualTables, setVirtualTables] = useState([]);
   const [selectedTable, setSelectedTable] = useState(null);
   const [selectedOrder, setSelectedOrder] = useState(null);
 
@@ -124,6 +213,11 @@ const Kassa = () => {
     lastCheckedAt: null,
   });
   const [loadingPrinters, setLoadingPrinters] = useState(false);
+
+  const currentUserId = useMemo(() => (user?._id ? String(user._id) : null), [user?._id]);
+  const userRole = user?.role || "";
+  const isManager = userRole === "admin" || userRole === "kassir";
+  const allowedRoles = new Set(["admin", "kassir", "ofitsiant"]);
 
   const numberFormatter = useMemo(() => new Intl.NumberFormat("uz-UZ"), []);
   const timeFormatter = useMemo(
@@ -286,9 +380,54 @@ const Kassa = () => {
     }
   }, []);
 
+  const loadVirtualOrders = useCallback(async () => {
+    try {
+      const res = await api.get("/orders?deliveryOnly=true");
+      const normalized = normalizeOrdersResponse(res.data);
+      const active = normalized.filter((order) => isOrderActive(order));
+      const mapped = active
+        .map((order) => mapVirtualOrderToTable(order))
+        .filter(Boolean)
+        .sort((a, b) => b.sortTimestamp - a.sortTimestamp);
+
+      setVirtualTables(mapped);
+
+      setSelectedTable((current) => {
+        if (!current?.isVirtual) return current;
+        const updated = mapped.find((entry) => entry._id === current._id);
+        if (!updated) {
+          setSelectedOrder(null);
+          return null;
+        }
+        setSelectedOrder({
+          ...updated.linkedOrder,
+          items: Array.isArray(updated.linkedOrder?.items) ? updated.linkedOrder.items : [],
+          tableName: updated.name,
+          table: null,
+          isVirtual: true,
+        });
+        return updated;
+      });
+    } catch (error) {
+      console.error("[KASSA] Virtual buyurtmalarni yuklab bo'lmadi", error);
+    }
+  }, []);
+
   const loadOrder = useCallback(async (table) => {
     if (!table?._id) {
       setSelectedOrder(null);
+      return;
+    }
+
+    if (table.isVirtual && table.linkedOrder) {
+      setLoadingOrder(false);
+      setSelectedOrder({
+        ...table.linkedOrder,
+        items: Array.isArray(table.linkedOrder?.items) ? table.linkedOrder.items : [],
+        tableName: table.name,
+        table: null,
+        isVirtual: true,
+      });
       return;
     }
 
@@ -322,7 +461,8 @@ const Kassa = () => {
 
   useEffect(() => {
     loadTables();
-  }, [loadTables]);
+    loadVirtualOrders();
+  }, [loadTables, loadVirtualOrders]);
 
   useEffect(() => {
     refreshPrinters();
@@ -335,6 +475,7 @@ const Kassa = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       loadTables();
+      loadVirtualOrders();
       refreshPrinters();
       if (selectedTable?._id) {
         loadOrder(selectedTable);
@@ -342,7 +483,7 @@ const Kassa = () => {
     }, 45000);
 
     return () => clearInterval(interval);
-  }, [loadTables, loadOrder, refreshPrinters, selectedTable]);
+  }, [loadTables, loadOrder, loadVirtualOrders, refreshPrinters, selectedTable]);
 
   useEffect(() => {
     if (!notification) return undefined;
@@ -353,15 +494,14 @@ const Kassa = () => {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      await loadTables();
+      await Promise.all([loadTables(), loadVirtualOrders(), refreshPrinters()]);
       if (selectedTable?._id) {
         await loadOrder(selectedTable);
       }
-      await refreshPrinters();
     } finally {
       setRefreshing(false);
     }
-  }, [loadTables, loadOrder, refreshPrinters, selectedTable]);
+  }, [loadTables, loadOrder, loadVirtualOrders, refreshPrinters, selectedTable]);
 
   const handlePaid = useCallback(() => {
     setNotification({
@@ -370,11 +510,12 @@ const Kassa = () => {
       message: `${selectedTable?.name || "Tanlangan stol"} uchun chek yopildi`,
     });
     loadTables();
+    loadVirtualOrders();
     if (selectedTable?._id) {
       loadOrder(selectedTable);
     }
     refreshPrinters();
-  }, [loadTables, loadOrder, refreshPrinters, selectedTable]);
+  }, [loadTables, loadOrder, loadVirtualOrders, refreshPrinters, selectedTable]);
 
   const handleOrderUpdate = useCallback(
     (updatedOrder) => {
@@ -387,15 +528,45 @@ const Kassa = () => {
           table: prev.table || updatedOrder.table || selectedTable,
         };
       });
+      setVirtualTables((prev) => {
+        let changed = false;
+        const next = prev.map((entry) => {
+          if (!entry?.isVirtual || entry.linkedOrder?._id !== updatedOrder._id) return entry;
+          changed = true;
+          const merged = { ...entry.linkedOrder, ...updatedOrder };
+          return mapVirtualOrderToTable(merged) || entry;
+        });
+        return changed ? next.filter(Boolean).sort((a, b) => b.sortTimestamp - a.sortTimestamp) : prev;
+      });
     },
     [selectedTable]
   );
 
-  const tableCategories = useMemo(() => {
-    if (!tables.length) return [];
+  const handleTableSelect = useCallback(
+    (table) => {
+      if (!table) return;
+      if (isTableLockedForUser(table, currentUserId, isManager)) {
+        const { name } = getAssignedInfo(table);
+        setNotification({
+          type: "warning",
+          title: "Stol boshqa ofitsiantda",
+          message: `${name || "Boshqa ofitsiant"} ushbu stolga biriktirilgan.`,
+        });
+        return;
+      }
 
-    const counts = new Map();
-    tables.forEach((table) => {
+      setSelectedTable(table);
+    },
+    [currentUserId, isManager, setSelectedTable, setNotification]
+  );
+
+  const allTables = useMemo(() => [...tables, ...virtualTables], [tables, virtualTables]);
+
+  const filteredTables = useMemo(() => {
+    if (!allTables.length) return [];
+    const search = searchTerm.trim().toLowerCase();
+
+    return allTables
       const category = getTableCategory(table);
       counts.set(category, (counts.get(category) || 0) + 1);
     });
@@ -403,14 +574,16 @@ const Kassa = () => {
     return Array.from(counts.entries())
       .map(([value, count]) => ({ value, label: formatCategoryLabel(value), count }))
       .sort((a, b) => a.label.localeCompare(b.label, "uz", { sensitivity: "base" }));
-  }, [tables]);
+  }, [allTables]);
 
   const filteredTables = useMemo(() => {
-    if (!tables.length) return [];
+    if (!allTables.length) return [];
     const search = searchTerm.trim().toLowerCase();
 
-    return tables
+    return allTables
       .filter((table) => {
+          table.assignedToName,
+          table.assignedTo?.name,
         const statusMatch = statusFilter === "all" || table.status === statusFilter;
         if (!statusMatch) return false;
 
@@ -419,28 +592,46 @@ const Kassa = () => {
         if (!categoryMatch) return false;
 
         if (!search) return true;
-        const name = (table.name || "").toLowerCase();
-        const code = (table.code || "").toLowerCase();
-        return name.includes(search) || code.includes(search);
+        const haystack = [
+        const lockedA = isTableLockedForUser(a, currentUserId, isManager);
+        const lockedB = isTableLockedForUser(b, currentUserId, isManager);
+        if (lockedA && !lockedB) return 1;
+        if (!lockedA && lockedB) return -1;
+          table.name,
+          table.code,
+          table.category,
+          table.virtualMeta?.meta,
+          table.virtualMeta?.customerName,
+        ]
+          .filter(Boolean)
+  }, [allTables, statusFilter, categoryFilter, searchTerm, selectedTable, currentUserId, isManager]);
+          .toLowerCase();
+        return haystack.includes(search);
       })
       .sort((a, b) => {
         if (selectedTable?._id === a._id) return -1;
         if (selectedTable?._id === b._id) return 1;
+        if (a.isVirtual && !b.isVirtual) return -1;
+        if (!a.isVirtual && b.isVirtual) return 1;
+        if (a.isVirtual && b.isVirtual) {
+          return b.sortTimestamp - a.sortTimestamp;
+        }
         const orderA = STATUS_ORDER[a.status] ?? 3;
         const orderB = STATUS_ORDER[b.status] ?? 3;
         if (orderA !== orderB) return orderA - orderB;
         return (a.name || "").localeCompare(b.name || "");
       });
-  }, [tables, statusFilter, categoryFilter, searchTerm, selectedTable]);
+  }, [allTables, statusFilter, categoryFilter, searchTerm, selectedTable]);
 
   useEffect(() => {
     if (!selectedTable?._id) return;
+
     const stillVisible = filteredTables.some((table) => table._id === selectedTable._id);
-    if (!stillVisible) {
+    if (!stillVisible || isTableLockedForUser(selectedTable, currentUserId, isManager)) {
       setSelectedTable(null);
       setSelectedOrder(null);
     }
-  }, [filteredTables, selectedTable]);
+  }, [filteredTables, selectedTable, currentUserId, isManager]);
 
   useEffect(() => {
     if (categoryFilter === "all") return;
@@ -522,7 +713,9 @@ const Kassa = () => {
         key: "total",
         label: "Jami stollar",
         value: tablesStats.total.toString(),
-        sub: `${tablesStats.free} ta bo'sh`,
+        sub: virtualTables.length
+          ? `${tablesStats.free} ta bo'sh · ${virtualTables.length} ta dostavka/soboy`
+          : `${tablesStats.free} ta bo'sh`,
         icon: <FiGrid />,
       },
       {
@@ -564,10 +757,11 @@ const Kassa = () => {
       printerSummary.total,
       selectedOrder,
       tablesStats,
+      virtualTables.length,
     ]
   );
 
-  if (!user || (user.role !== "kassir" && user.role !== "admin")) {
+  if (!user || !allowedRoles.has(userRole)) {
     return (
       <div className="kassa-screen page-shell page-shell--full-width">
         <div className="kassa-locked">
@@ -583,6 +777,7 @@ const Kassa = () => {
     selectedOrder?.guestCount ?? selectedOrder?.covers ?? selectedOrder?.guests ?? "—";
   const orderStatusKey = selectedOrder?.status || "empty";
   const orderStatusLabel = selectedOrder ? STATUS_LABELS[selectedOrder.status] || selectedOrder.status : "Buyurtma yo‘q";
+  const toastIcon = notification?.type === "success" ? <FiCreditCard /> : <FiAlertCircle />;
 
   return (
     <div className="kassa-screen page-shell page-shell--full-width">
@@ -728,7 +923,10 @@ const Kassa = () => {
           <div className="kassa-panel-head">
             <div>
               <h2>Stollar</h2>
-              <p>{tablesStats.total} ta umumiy, {tablesStats.free} ta bo‘sh</p>
+              <p>
+                {tablesStats.total} ta stol, {tablesStats.free} ta bo‘sh
+                {virtualTables.length ? ` · ${virtualTables.length} ta dostavka/soboy` : ""}
+              </p>
             </div>
             <span className="kassa-last-sync">Sync: {lastSyncLabel}</span>
           </div>
@@ -745,7 +943,7 @@ const Kassa = () => {
                   onClick={() => setCategoryFilter("all")}
                 >
                   Barchasi
-                  <span className="kassa-chip-count">{tablesStats.total}</span>
+                  <span className="kassa-chip-count">{allTables.length}</span>
                 </button>
                 {tableCategories.map((category) => (
                   <button
@@ -777,21 +975,56 @@ const Kassa = () => {
                   const statusLabel = TABLE_STATUS_LABELS[table.status] || table.status || "Holatsiz";
                   const categoryValue = getTableCategory(table);
                   const categoryLabel = formatCategoryLabel(categoryValue);
-                  const metaLabel = table.code ? `${categoryLabel} · #${table.code}` : categoryLabel;
+                  const metaLabel = table.isVirtual
+                    ? [
+                        categoryLabel,
+                        table.code ? `#${table.code}` : null,
+                        table.virtualMeta?.meta || null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")
+                    : table.code
+                    ? `${categoryLabel} · #${table.code}`
+                    : categoryLabel;
+                  const virtualLabel = table.isVirtual
+                    ? table.virtualType === "soboy"
+                      ? "Soboy"
+                      : "Dostavka"
+                    : null;
+                  const assignedInfo = getAssignedInfo(table);
+                  const lockedForUser = isTableLockedForUser(table, currentUserId, isManager);
+
                   return (
                     <button
                       key={table._id}
                       type="button"
-                      className={`kassa-table-card status-${table.status || "free"}${isSelected ? " selected" : ""}`}
-                      onClick={() => setSelectedTable(table)}
+                      className={`kassa-table-card status-${table.status || "free"}${isSelected ? " selected" : ""}${lockedForUser ? " is-locked" : ""}`}
+                      onClick={() => handleTableSelect(table)}
                     >
                       <div className="table-card-top">
-                        <span className={`table-status-chip status-${table.status || "free"}`}>{statusLabel}</span>
+                        <div className="table-card-badges">
+                          <span className={`table-status-chip status-${table.status || "free"}`}>{statusLabel}</span>
+                          {virtualLabel && (
+                            <span className={`table-virtual-pill type-${table.virtualType || "delivery"}`}>
+                              {virtualLabel}
+                            </span>
+                          )}
+                          {lockedForUser && (
+                            <span className="table-locked-pill">
+                              <FiLock /> Biriktirilgan
+                            </span>
+                          )}
+                        </div>
                         {isSelected && <span className="table-selected-pill">Aktiv</span>}
                       </div>
                       <div className="table-card-body">
                         <h3>{table.name}</h3>
                         <p className="table-card-meta">{metaLabel}</p>
+                        {!table.isVirtual && assignedInfo.name && (
+                          <p className={`table-assigned-label${lockedForUser ? " locked" : ""}`}>
+                            Ofitsiant: {assignedInfo.name}
+                          </p>
+                        )}
                       </div>
                     </button>
                   );
@@ -817,7 +1050,7 @@ const Kassa = () => {
 
       {notification && (
         <div className={`kassa-toast ${notification.type}`}>
-          <FiCreditCard />
+          {toastIcon}
           <div>
             <strong>{notification.title}</strong>
             <span>{notification.message}</span>
