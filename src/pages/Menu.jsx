@@ -1,5 +1,5 @@
 // src/pages/MenuPage.jsx
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTable } from "../context/TableContext.jsx";
 import useSocket from "../hooks/useSocket";
@@ -41,6 +41,39 @@ const emptyDraft = {
   portionOptions: [],
 };
 
+const defaultWeightModalState = {
+  open: false,
+  item: null,
+  weightInput: "",
+  priceInput: "",
+  mode: "weight",
+  error: "",
+};
+
+const TEXT_KEYBOARD_LAYOUT = [
+  ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "backspace"],
+  ["a", "s", "d", "f", "g", "h", "j", "k", "l", "enter"],
+  ["caps", "z", "x", "c", "v", "b", "n", "m", ",", ".", "@"],
+  ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "hide"],
+  ["space"]
+];
+
+const NUMERIC_KEYBOARD_LAYOUT = [
+  ["7", "8", "9", "backspace"],
+  ["4", "5", "6", "clear"],
+  ["1", "2", "3", "hide"],
+  ["00", "0", ".", "enter"]
+];
+
+const KEYBOARD_LABELS = {
+  backspace: "⌫",
+  enter: "Tasdiqlash",
+  hide: "✕",
+  caps: "Caps",
+  space: "Bo'shliq",
+  clear: "Tozalash",
+};
+
 export default function MenuPage() {
   const { user, token } = useAuth();
   const { selectedTable } = useTable();
@@ -62,8 +95,16 @@ export default function MenuPage() {
   const [tableAccessError, setTableAccessError] = useState("");
   const [orderLoading, setOrderLoading] = useState(false);
   const [isCategoryMenuOpen, setIsCategoryMenuOpen] = useState(false);
-  const [weightOrderModal, setWeightOrderModal] = useState({ open: false, item: null, amount: "", error: "" });
+  const [weightOrderModal, setWeightOrderModal] = useState(() => ({ ...defaultWeightModalState }));
   const [portionOrderModal, setPortionOrderModal] = useState({ open: false, item: null });
+  const [virtualKeyboard, setVirtualKeyboard] = useState({ visible: false, mode: "text", target: null, label: "", options: {} });
+  const [keyboardValue, setKeyboardValue] = useState("");
+  const [keyboardCapsLock, setKeyboardCapsLock] = useState(false);
+  const keyboardSessionRef = useRef({ onChange: null, onSubmit: null });
+  const keyboardVisible = virtualKeyboard.visible;
+  const keyboardTarget = virtualKeyboard.target;
+  const compactKeyboard = keyboardTarget === "weight" || keyboardTarget === "price";
+  const inlineKeyboard = compactKeyboard && weightOrderModal.open;
 
   const socket = useSocket();
 
@@ -80,7 +121,7 @@ export default function MenuPage() {
   );
 
   // Load Menu
-  const loadMenu = async (search = "") => {
+  const loadMenu = useCallback(async (search = "") => {
     setLoading(true);
     try {
       const res = await api.get("/menu", { params: search ? { q: search } : {} });
@@ -90,7 +131,7 @@ export default function MenuPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const loadPrinters = async () => {
     try {
@@ -115,7 +156,7 @@ export default function MenuPage() {
     api.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     loadMenu();
     loadPrinters();
-  }, [token]);
+  }, [token, loadMenu]);
 
   // Stol buyurtmalarini yuklash (ofitsiant uchun kirish cheklovi bilan)
   const fetchTableOrders = useCallback(async () => {
@@ -184,7 +225,9 @@ export default function MenuPage() {
     }
   }, [tableAccessError]);
 
-  const handleSearch = () => loadMenu(query.trim());
+  const handleSearch = useCallback(() => {
+    loadMenu(query.trim());
+  }, [loadMenu, query]);
 
   const priceFormatter = useMemo(() => new Intl.NumberFormat("uz-UZ", { maximumFractionDigits: 0 }), []);
   const quantityFormatter = useMemo(() => new Intl.NumberFormat("uz-UZ", { maximumFractionDigits: 3 }), []);
@@ -222,7 +265,10 @@ export default function MenuPage() {
     return map;
   }, [printerOptions]);
 
-  const generateCartUid = () => `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+  const generateCartUid = useCallback(
+    () => `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`,
+    []
+  );
 
   const addFixedItemToCart = (item) => {
     setCart((prev) => {
@@ -266,7 +312,7 @@ export default function MenuPage() {
     const mode = item?.pricingMode || "fixed";
 
     if (mode === "weight") {
-      setWeightOrderModal({ open: true, item, amount: "", error: "" });
+      setWeightOrderModal({ ...defaultWeightModalState, open: true, item });
       return;
     }
 
@@ -290,11 +336,203 @@ export default function MenuPage() {
     return slug || fallback;
   };
 
-  const closeWeightModal = () => setWeightOrderModal({ open: false, item: null, amount: "", error: "" });
+  const closeWeightModal = () => setWeightOrderModal({ ...defaultWeightModalState });
 
-  const handleWeightAmountChange = (raw) => {
-    const sanitized = raw.replace(/[^\d.,]/g, "");
-    setWeightOrderModal((prev) => ({ ...prev, amount: sanitized, error: "" }));
+  const sanitizeDecimalInput = (raw) => raw.replace(/[^\d.,]/g, "");
+
+  const parseDecimalValue = (value) => {
+    const normalized = sanitizeDecimalInput(value).replace(/\s+/g, "").replace(/,/g, ".");
+    const numeric = Number(normalized);
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : null;
+  };
+
+  const formatWeightInputValue = (weight) => {
+    if (!Number.isFinite(weight) || weight <= 0) return "";
+    return String(parseFloat(weight.toFixed(3)));
+  };
+
+  const openVirtualKeyboard = useCallback(
+    ({ target, mode = "text", initialValue, onChange, onSubmit, label, options }) => {
+      if (isAdmin) return;
+
+      const normalizedValue =
+        typeof initialValue === "string"
+          ? initialValue
+          : initialValue != null
+          ? String(initialValue)
+          : "";
+
+      keyboardSessionRef.current = {
+        onChange: typeof onChange === "function" ? onChange : null,
+        onSubmit: typeof onSubmit === "function" ? onSubmit : null,
+      };
+
+      setKeyboardCapsLock(false);
+      setKeyboardValue(normalizedValue);
+      setVirtualKeyboard({
+        visible: true,
+        mode,
+        target,
+        label: label || "",
+        options: options || {},
+      });
+    },
+    [isAdmin]
+  );
+
+  const closeVirtualKeyboard = useCallback(() => {
+    setVirtualKeyboard((prev) => ({ ...prev, visible: false, target: null, label: "", options: {} }));
+    keyboardSessionRef.current = { onChange: null, onSubmit: null };
+  }, []);
+
+  const showSearchKeyboard = useCallback(() => {
+    openVirtualKeyboard({
+      target: "search",
+      mode: "text",
+      initialValue: query,
+      onChange: setQuery,
+      onSubmit: handleSearch,
+      label: "Qidiruv",
+    });
+  }, [openVirtualKeyboard, query, handleSearch]);
+
+  const handleVirtualKeyboardKeyPress = useCallback(
+    (key) => {
+      if (!virtualKeyboard.visible) return;
+
+      if (key === "hide") {
+        closeVirtualKeyboard();
+        return;
+      }
+
+      if (key === "enter") {
+        if (keyboardSessionRef.current.onSubmit) {
+          keyboardSessionRef.current.onSubmit();
+        }
+        closeVirtualKeyboard();
+        return;
+      }
+
+      if (key === "caps" && virtualKeyboard.mode === "text") {
+        setKeyboardCapsLock((prev) => !prev);
+        return;
+      }
+
+      if (key === "clear") {
+        setKeyboardValue("");
+        if (keyboardSessionRef.current.onChange) {
+          keyboardSessionRef.current.onChange("");
+        }
+        return;
+      }
+
+      if (key === "backspace") {
+        setKeyboardValue((prev) => {
+          const next = prev.slice(0, -1);
+          if (next !== prev && keyboardSessionRef.current.onChange) {
+            keyboardSessionRef.current.onChange(next);
+          }
+          return next;
+        });
+        return;
+      }
+
+      if (virtualKeyboard.mode === "text") {
+        if (key === "space") {
+          setKeyboardValue((prev) => {
+            const next = `${prev} `;
+            if (keyboardSessionRef.current.onChange) keyboardSessionRef.current.onChange(next);
+            return next;
+          });
+          return;
+        }
+
+        if (key.length === 1 || [",", ".", "@", "-"].includes(key)) {
+          const char = keyboardCapsLock ? key.toUpperCase() : key.toLowerCase();
+          setKeyboardValue((prev) => {
+            const next = prev + char;
+            if (keyboardSessionRef.current.onChange) keyboardSessionRef.current.onChange(next);
+            return next;
+          });
+        }
+        return;
+      }
+
+      // Numeric layout
+      const allowDecimal = Boolean(virtualKeyboard.options?.allowDecimal);
+      if (key === "." && !allowDecimal) {
+        return;
+      }
+
+      setKeyboardValue((prev) => {
+        if (key === "." && prev.includes(".")) {
+          return prev;
+        }
+
+        const next = prev + key;
+        if (keyboardSessionRef.current.onChange) {
+          keyboardSessionRef.current.onChange(next);
+        }
+        return next;
+      });
+    },
+    [virtualKeyboard, closeVirtualKeyboard, keyboardCapsLock]
+  );
+
+  useEffect(() => {
+    if (!keyboardVisible) return;
+
+    const syncValue = (nextValue) => {
+      setKeyboardValue((prev) => (prev === nextValue ? prev : nextValue));
+    };
+
+    if (keyboardTarget === "weight") {
+      syncValue(weightOrderModal.weightInput || "");
+    } else if (keyboardTarget === "price") {
+      syncValue(weightOrderModal.priceInput || "");
+    } else if (keyboardTarget === "search") {
+      syncValue(query || "");
+    }
+  }, [keyboardVisible, keyboardTarget, weightOrderModal.weightInput, weightOrderModal.priceInput, query]);
+
+  const handleWeightValueChange = useCallback((raw) => {
+    const sanitized = sanitizeDecimalInput(raw);
+    setWeightOrderModal((prev) => ({ ...prev, weightInput: sanitized, error: "", mode: "weight" }));
+  }, []);
+
+  const handlePriceValueChange = useCallback((raw) => {
+    const sanitized = sanitizeDecimalInput(raw);
+    setWeightOrderModal((prev) => ({ ...prev, priceInput: sanitized, error: "", mode: "price" }));
+  }, []);
+
+  const handleWeightModeSwitch = (mode) => {
+    setWeightOrderModal((prev) => {
+      if (prev.mode === mode) return prev;
+
+      const unitPrice = Number(prev.item?.price || 0);
+      let nextState = { ...prev, mode, error: "" };
+
+      if (mode === "price" && !prev.priceInput && unitPrice > 0) {
+        const weightValue = parseDecimalValue(prev.weightInput);
+        if (weightValue) {
+          const computedSum = Math.round(weightValue * unitPrice);
+          nextState = { ...nextState, priceInput: computedSum > 0 ? String(computedSum) : "" };
+        }
+      }
+
+      if (mode === "weight" && !prev.weightInput && unitPrice > 0) {
+        const priceValue = parseDecimalValue(prev.priceInput);
+        if (priceValue) {
+          const computedWeight = priceValue / unitPrice;
+          nextState = {
+            ...nextState,
+            weightInput: formatWeightInputValue(computedWeight),
+          };
+        }
+      }
+
+      return nextState;
+    });
   };
 
   const closePortionModal = () => setPortionOrderModal({ open: false, item: null });
@@ -359,25 +597,214 @@ export default function MenuPage() {
     const unitPrice = Number(weightOrderModal.item.price || 0);
     if (!Number.isFinite(unitPrice) || unitPrice <= 0) return null;
 
-    const normalizedAmount = weightOrderModal.amount.replace(/\s+/g, "").replace(/,/g, ".");
-    const requestedWeight = Number(normalizedAmount);
-    if (!Number.isFinite(requestedWeight) || requestedWeight <= 0) return null;
-
     const unitLabel = weightOrderModal.item.weightUnit === "g" ? "g" : weightOrderModal.item.weightUnit || "kg";
-    const normalizedWeight = Number(requestedWeight.toFixed(3));
-    const totalPrice = unitPrice * normalizedWeight;
+    const minStep = Number(weightOrderModal.item.weightStep || 0);
+    const mode = weightOrderModal.mode || "weight";
+
+    if (mode === "price") {
+      const requestedPrice = parseDecimalValue(weightOrderModal.priceInput);
+      if (requestedPrice === null) return null;
+
+      let weight = requestedPrice / unitPrice;
+      if (!Number.isFinite(weight) || weight <= 0) return null;
+
+      if (minStep > 0) {
+        const steps = Math.max(1, Math.ceil(weight / minStep - 1e-6));
+        weight = steps * minStep;
+      }
+
+      const totalPrice = unitPrice * weight;
+      if (!Number.isFinite(totalPrice) || totalPrice <= 0) return null;
+
+      const formattedWeight = `${quantityFormatter.format(Number(weight.toFixed(3)))} ${unitLabel}`;
+      const calculatedPrice = Math.round(totalPrice);
+      const requestedRounded = Math.round(requestedPrice);
+
+      return {
+        weightLabel: formattedWeight,
+        amountLabel: priceFormatter.format(calculatedPrice),
+        requestedAmountLabel: priceFormatter.format(requestedRounded),
+        stepAdjusted: Math.abs(calculatedPrice - requestedRounded) > 0,
+      };
+    }
+
+    const requestedWeight = parseDecimalValue(weightOrderModal.weightInput);
+    if (requestedWeight === null) return null;
+
+    const totalPrice = unitPrice * requestedWeight;
     if (!Number.isFinite(totalPrice) || totalPrice <= 0) return null;
 
+    const normalizedWeight = Number(requestedWeight.toFixed(3));
     return {
       weightLabel: `${quantityFormatter.format(normalizedWeight)} ${unitLabel}`,
       amountLabel: priceFormatter.format(Math.round(totalPrice)),
+      requestedAmountLabel: null,
+      stepAdjusted: false,
     };
-  }, [weightOrderModal, quantityFormatter]);
+  }, [weightOrderModal, quantityFormatter, priceFormatter]);
 
   const weightModalUnitLabel = weightOrderModal.item?.weightUnit === "g"
     ? "g"
     : weightOrderModal.item?.weightUnit || "kg";
   const weightModalPlaceholder = weightModalUnitLabel === "g" ? "Masalan, 500" : "Masalan, 0.5";
+  const priceModalPlaceholder = "Masalan, 25000";
+
+  const confirmWeightSelection = () => {
+    const { item, mode } = weightOrderModal;
+    if (!item) return;
+
+    const unitPrice = Number(item.price || 0);
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+      setWeightOrderModal((prev) => ({ ...prev, error: "Bu taom uchun narx belgilanmagan." }));
+      return;
+    }
+
+    const unitLabel = item.weightUnit === "g" ? "g" : item.weightUnit || "kg";
+    const minStep = Number(item.weightStep || 0);
+
+    let requestedWeight = null;
+    let requestedPrice = null;
+
+    if (mode === "price") {
+      const parsedPrice = parseDecimalValue(weightOrderModal.priceInput);
+      if (parsedPrice === null) {
+        setWeightOrderModal((prev) => ({ ...prev, error: "To‘g‘ri summa kiriting." }));
+        return;
+      }
+      requestedPrice = parsedPrice;
+      requestedWeight = parsedPrice / unitPrice;
+      if (!Number.isFinite(requestedWeight) || requestedWeight <= 0) {
+        setWeightOrderModal((prev) => ({ ...prev, error: "Summadan og'irlikni hisoblab bo'lmadi." }));
+        return;
+      }
+    } else {
+      const parsedWeight = parseDecimalValue(weightOrderModal.weightInput);
+      if (parsedWeight === null) {
+        setWeightOrderModal((prev) => ({ ...prev, error: "To'g'ri og'irlik kiriting." }));
+        return;
+      }
+      requestedWeight = parsedWeight;
+      requestedPrice = unitPrice * requestedWeight;
+    }
+
+    if (minStep > 0 && requestedWeight + 1e-9 < minStep) {
+      setWeightOrderModal((prev) => ({
+        ...prev,
+        error: `Minimal buyurtma ${quantityFormatter.format(minStep)} ${unitLabel}.`,
+      }));
+      return;
+    }
+
+    let normalizedWeight = requestedWeight;
+
+    if (minStep > 0) {
+      if (mode === "price") {
+        const rawSteps = requestedWeight / minStep;
+        if (!Number.isFinite(rawSteps) || rawSteps <= 0) {
+          setWeightOrderModal((prev) => ({
+            ...prev,
+            error: `Og'irlik ${quantityFormatter.format(minStep)} ${unitLabel} qadamlarida bo'lishi kerak.`,
+          }));
+          return;
+        }
+        const steps = Math.max(1, Math.ceil(rawSteps - 1e-6));
+        normalizedWeight = Number((steps * minStep).toFixed(3));
+      } else {
+        const steps = requestedWeight / minStep;
+        if (Math.abs(steps - Math.round(steps)) > 1e-6) {
+          setWeightOrderModal((prev) => ({
+            ...prev,
+            error: `Og'irlik ${quantityFormatter.format(minStep)} ${unitLabel} qadamlarida bo'lishi kerak.`,
+          }));
+          return;
+        }
+        normalizedWeight = Number(requestedWeight.toFixed(3));
+      }
+    } else {
+      normalizedWeight = Number(requestedWeight.toFixed(3));
+    }
+
+    if (!Number.isFinite(normalizedWeight) || normalizedWeight <= 0) {
+      setWeightOrderModal((prev) => ({ ...prev, error: "Og'irlik juda kichik." }));
+      return;
+    }
+
+    const totalPrice = unitPrice * normalizedWeight;
+    if (!Number.isFinite(totalPrice) || totalPrice <= 0) {
+      setWeightOrderModal((prev) => ({ ...prev, error: "Summani hisoblashda xatolik." }));
+      return;
+    }
+
+    const displayQty = `${quantityFormatter.format(normalizedWeight)} ${unitLabel}`;
+    const roundedTotal = Math.round(totalPrice);
+    const formattedSum = priceFormatter.format(roundedTotal);
+
+    let notes = `Taxminiy summa: ${formattedSum} so‘m`;
+    if (mode === "price" && requestedPrice) {
+      const requestedRounded = Math.round(requestedPrice);
+      if (Math.abs(roundedTotal - requestedRounded) > 0) {
+        notes += ` (so'ralgan: ${priceFormatter.format(requestedRounded)} so‘m)`;
+      }
+    }
+
+    setCart((prev) => [
+      ...prev,
+      {
+        uid: generateCartUid(),
+        menuItem: item._id,
+        name: item.name,
+        price: unitPrice,
+        qty: normalizedWeight,
+        portionKey: "weight",
+        portionLabel: displayQty,
+        notes,
+        pricingMode: "weight",
+        displayQty,
+        weightUnit: unitLabel,
+      },
+    ]);
+
+    closeWeightModal();
+  };
+
+  const showWeightKeyboard = useCallback(() => {
+    if (!weightOrderModal.open) return;
+    openVirtualKeyboard({
+      target: "weight",
+      mode: "numeric",
+      initialValue: weightOrderModal.weightInput || "",
+      onChange: handleWeightValueChange,
+      onSubmit: confirmWeightSelection,
+      label: `Og'irlik (${weightModalUnitLabel})`,
+      options: { allowDecimal: weightModalUnitLabel !== "g" },
+    });
+  }, [
+    weightOrderModal.open,
+    weightOrderModal.weightInput,
+    weightModalUnitLabel,
+    openVirtualKeyboard,
+    handleWeightValueChange,
+    confirmWeightSelection,
+  ]);
+
+  const showPriceKeyboard = useCallback(() => {
+    if (!weightOrderModal.open) return;
+    openVirtualKeyboard({
+      target: "price",
+      mode: "numeric",
+      initialValue: weightOrderModal.priceInput || "",
+      onChange: handlePriceValueChange,
+      onSubmit: confirmWeightSelection,
+      label: "Summa (so'm)",
+      options: { allowDecimal: false },
+    });
+  }, [
+    weightOrderModal.open,
+    weightOrderModal.priceInput,
+    openVirtualKeyboard,
+    handlePriceValueChange,
+    confirmWeightSelection,
+  ]);
 
   const portionOptionsForModal = Array.isArray(portionOrderModal.item?.portionOptions)
     ? portionOrderModal.item.portionOptions
@@ -409,73 +836,61 @@ export default function MenuPage() {
     }
   };
 
-  const confirmWeightSelection = () => {
-    const { item, amount } = weightOrderModal;
-    if (!item) return;
+  useEffect(() => {
+    if (!keyboardVisible) return;
 
-    const unitPrice = Number(item.price || 0);
-    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
-      setWeightOrderModal((prev) => ({ ...prev, error: "Bu taom uchun narx belgilanmagan." }));
+    if (keyboardTarget === "search") {
+      keyboardSessionRef.current.onChange = setQuery;
+      keyboardSessionRef.current.onSubmit = handleSearch;
+    } else if (keyboardTarget === "weight") {
+      keyboardSessionRef.current.onChange = handleWeightValueChange;
+      keyboardSessionRef.current.onSubmit = confirmWeightSelection;
+    } else if (keyboardTarget === "price") {
+      keyboardSessionRef.current.onChange = handlePriceValueChange;
+      keyboardSessionRef.current.onSubmit = confirmWeightSelection;
+    }
+  }, [
+    keyboardVisible,
+    keyboardTarget,
+    handleSearch,
+    handleWeightValueChange,
+    handlePriceValueChange,
+    confirmWeightSelection,
+  ]);
+
+  useEffect(() => {
+    if (!keyboardVisible) return;
+
+    if (!isWaiter) {
+      closeVirtualKeyboard();
       return;
     }
 
-    const normalizedAmount = amount.replace(/\s+/g, "").replace(/,/g, ".");
-    const requestedWeight = Number(normalizedAmount);
-    if (!Number.isFinite(requestedWeight) || requestedWeight <= 0) {
-      setWeightOrderModal((prev) => ({ ...prev, error: "To'g'ri og'irlik kiriting." }));
-      return;
+    if (!weightOrderModal.open && (keyboardTarget === "weight" || keyboardTarget === "price")) {
+      closeVirtualKeyboard();
     }
+  }, [keyboardVisible, keyboardTarget, isWaiter, weightOrderModal.open, closeVirtualKeyboard]);
 
-    const unitLabel = item.weightUnit === "g" ? "g" : item.weightUnit || "kg";
-    const minStep = Number(item.weightStep || 0);
-    if (minStep > 0 && requestedWeight + 1e-9 < minStep) {
-      setWeightOrderModal((prev) => ({
-        ...prev,
-        error: `Minimal buyurtma ${quantityFormatter.format(minStep)} ${unitLabel}.`,
-      }));
-      return;
-    }
+  useEffect(() => {
+    if (!keyboardVisible) return;
 
-    if (minStep > 0) {
-      const steps = requestedWeight / minStep;
-      if (Math.abs(steps - Math.round(steps)) > 1e-6) {
-        setWeightOrderModal((prev) => ({
-          ...prev,
-          error: `Og'irlik ${quantityFormatter.format(minStep)} ${unitLabel} qadamlarida bo'lishi kerak.`,
-        }));
+    const handleGlobalPointer = (event) => {
+      const keyboardElement = document.querySelector(".pos-keyboard");
+      if (!keyboardElement) {
+        closeVirtualKeyboard();
         return;
       }
-    }
+      if (!keyboardElement.contains(event.target)) {
+        closeVirtualKeyboard();
+      }
+    };
 
-    const normalizedWeight = Number(requestedWeight.toFixed(3));
-    const totalPrice = unitPrice * normalizedWeight;
-    if (!Number.isFinite(totalPrice) || totalPrice <= 0) {
-      setWeightOrderModal((prev) => ({ ...prev, error: "Summani hisoblashda xatolik." }));
-      return;
-    }
+    window.addEventListener("pointerdown", handleGlobalPointer, true);
 
-    const displayQty = `${quantityFormatter.format(normalizedWeight)} ${unitLabel}`;
-    const formattedSum = priceFormatter.format(Math.round(totalPrice));
-
-    setCart((prev) => [
-      ...prev,
-      {
-        uid: generateCartUid(),
-        menuItem: item._id,
-        name: item.name,
-        price: unitPrice,
-        qty: normalizedWeight,
-        portionKey: "weight",
-        portionLabel: displayQty,
-        notes: `Taxminiy summa: ${formattedSum} so‘m`,
-        pricingMode: "weight",
-        displayQty,
-        weightUnit: unitLabel,
-      },
-    ]);
-
-    closeWeightModal();
-  };
+    return () => {
+      window.removeEventListener("pointerdown", handleGlobalPointer, true);
+    };
+  }, [keyboardVisible, closeVirtualKeyboard]);
 
   const handleAddClick = () => {
     setAddMode(true);
@@ -497,6 +912,16 @@ export default function MenuPage() {
       image: null,
       productionPrinterIds: Array.isArray(item.productionPrinterIds)
         ? item.productionPrinterIds.map(String)
+        : [],
+      pricingMode: item.pricingMode || "fixed",
+      weightUnit: item.weightUnit || "kg",
+      weightStep: item.weightStep || 0.1,
+      portionOptions: Array.isArray(item.portionOptions)
+        ? item.portionOptions.map((portion) => ({
+            label: portion.label || "",
+            price: portion.price != null ? portion.price : "",
+            key: portion.key || "",
+          }))
         : [],
     });
     setShowEditModal(true);
@@ -523,6 +948,22 @@ export default function MenuPage() {
         price: parseFloat(editDraft.price),
         imageUrl,
         productionPrinterIds: editDraft.productionPrinterIds,
+        pricingMode: editDraft.pricingMode,
+        weightUnit: editDraft.pricingMode === "weight" ? editDraft.weightUnit : "kg",
+        weightStep:
+          editDraft.pricingMode === "weight"
+            ? Number.parseFloat(editDraft.weightStep) || 0
+            : 0.1,
+        portionOptions:
+          editDraft.pricingMode === "portion"
+            ? editDraft.portionOptions
+                .map((portion) => ({
+                  label: (portion.label || "").trim(),
+                  price: Number.parseFloat(portion.price) || 0,
+                  key: portion.key || undefined,
+                }))
+                .filter((portion) => portion.label && portion.price > 0)
+            : [],
       };
 
       if (addMode) {
@@ -563,6 +1004,70 @@ export default function MenuPage() {
     });
   };
 
+  const keyboardLayout = virtualKeyboard.mode === "numeric" ? NUMERIC_KEYBOARD_LAYOUT : TEXT_KEYBOARD_LAYOUT;
+  const keyboardHeading = virtualKeyboard.label || (virtualKeyboard.mode === "numeric" ? "Raqamli klaviatura" : "Matnli klaviatura");
+  const shouldRenderKeyboard = keyboardVisible && !isAdmin;
+  const keyboardClassNames = ["pos-keyboard", compactKeyboard ? "pos-keyboard--compact" : null, inlineKeyboard ? "pos-keyboard--inline" : null]
+    .filter(Boolean)
+    .join(" ");
+  const keyboardElement =
+    shouldRenderKeyboard ? (
+      <div className={keyboardClassNames} role="dialog" aria-label="Ekran klaviaturasi">
+        <div className="kbd-inner">
+          <div className="kbd-display">
+            <span className="kbd-display-label">{keyboardHeading}</span>
+            <div className="kbd-display-value">
+              {keyboardValue ? <>{keyboardValue}</> : <span className="kbd-display-placeholder">Bo'sh</span>}
+            </div>
+          </div>
+          {keyboardLayout.map((row, rowIndex) => (
+            <div key={`kbd-row-${rowIndex}`} className="kbd-row">
+              {row.map((key, keyIndex) => {
+                const isSpaceKey = key === "space";
+                const isActionKey =
+                  key === "backspace" || key === "enter" || key === "caps" || key === "hide" || key === "clear";
+                const buttonClasses = ["kbd-key"];
+                if (isActionKey) buttonClasses.push("kbd-key--special");
+                if (isSpaceKey) buttonClasses.push("kbd-key--space");
+                if (key === "caps" && keyboardCapsLock) buttonClasses.push("kbd-key--active");
+
+                const defaultLabel =
+                  virtualKeyboard.mode === "text" && key.length === 1 ? key.toUpperCase() : key;
+                const displayLabel =
+                  key === "caps"
+                    ? keyboardCapsLock
+                      ? "Caps ▲"
+                      : "Caps"
+                    : key === "space"
+                    ? KEYBOARD_LABELS.space
+                    : KEYBOARD_LABELS[key] || defaultLabel;
+
+                return (
+                  <button
+                    type="button"
+                    key={`${key}-${rowIndex}-${keyIndex}`}
+                    className={buttonClasses.join(" ")}
+                    onPointerDown={(event) => {
+                      event.preventDefault();
+                      handleVirtualKeyboardKeyPress(key);
+                    }}
+                  >
+                    {isSpaceKey ? (
+                      <span className="kbd-space-text">{displayLabel}</span>
+                    ) : key === "caps" ? (
+                      <span className="kbd-caps-text">{displayLabel}</span>
+                    ) : (
+                      displayLabel
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      </div>
+    ) : null;
+
   return (
     <div className="page-shell page-shell--full-width menu-page">
       {/* Header */}
@@ -577,6 +1082,14 @@ export default function MenuPage() {
             placeholder="Qidiruv..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onFocus={showSearchKeyboard}
+            onPointerDown={showSearchKeyboard}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleSearch();
+              }
+            }}
           />
           <button onClick={handleSearch}>Qidirish</button>
           {isAdmin && (
@@ -820,6 +1333,128 @@ export default function MenuPage() {
               accept="image/*"
               onChange={(e) => setEditDraft({ ...editDraft, image: e.target.files[0] })}
             />
+            <div className="pricing-mode-section">
+              <span className="section-title">Narxlash rejimi</span>
+              <div className="pricing-mode-options">
+                {[
+                  { value: "fixed", label: "Oddiy narx" },
+                  { value: "weight", label: "Og'irlik bo'yicha" },
+                  { value: "portion", label: "Porsiyalar" },
+                ].map((option) => (
+                  <label key={option.value} className="pricing-mode-option">
+                    <input
+                      type="radio"
+                      name="pricingMode"
+                      value={option.value}
+                      checked={editDraft.pricingMode === option.value}
+                      onChange={(e) => {
+                        const nextMode = e.target.value;
+                        setEditDraft((prev) => ({
+                          ...prev,
+                          pricingMode: nextMode,
+                          weightStep: nextMode === "weight" ? prev.weightStep || 0.1 : prev.weightStep,
+                          portionOptions: nextMode === "portion" ? prev.portionOptions : [],
+                        }));
+                      }}
+                    />
+                    <span>{option.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+            {editDraft.pricingMode === "weight" && (
+              <div className="weight-config">
+                <label className="modal-field">
+                  <span>Og'irlik birligi</span>
+                  <select
+                    value={editDraft.weightUnit}
+                    onChange={(e) => setEditDraft({ ...editDraft, weightUnit: e.target.value })}
+                  >
+                    <option value="kg">Kilogramm</option>
+                    <option value="g">Gramm</option>
+                  </select>
+                </label>
+                <label className="modal-field">
+                  <span>Minimal qadam</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={editDraft.weightStep}
+                    onChange={(e) => setEditDraft({ ...editDraft, weightStep: e.target.value })}
+                    placeholder={editDraft.weightUnit === "g" ? "Masalan, 50" : "Masalan, 0.1"}
+                  />
+                </label>
+              </div>
+            )}
+            {editDraft.pricingMode === "portion" && (
+              <div className="portion-config">
+                <div className="portion-config-head">
+                  <span className="section-title">Porsiya variantlari</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEditDraft((prev) => ({
+                        ...prev,
+                        portionOptions: [
+                          ...prev.portionOptions,
+                          { label: "", price: "" },
+                        ],
+                      }))
+                    }
+                  >
+                    + Porsiya qo'shish
+                  </button>
+                </div>
+                {editDraft.portionOptions.length === 0 && (
+                  <p className="modal-empty-note">Hozircha porsiya qo'shilmagan.</p>
+                )}
+                {editDraft.portionOptions.map((portion, index) => (
+                  <div key={index} className="portion-row">
+                    <input
+                      type="text"
+                      value={portion.label}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setEditDraft((prev) => {
+                          const next = [...prev.portionOptions];
+                          next[index] = { ...next[index], label: value };
+                          return { ...prev, portionOptions: next };
+                        });
+                      }}
+                      placeholder="Porsiya nomi"
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={portion.price}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setEditDraft((prev) => {
+                          const next = [...prev.portionOptions];
+                          next[index] = { ...next[index], price: value };
+                          return { ...prev, portionOptions: next };
+                        });
+                      }}
+                      placeholder="Narx"
+                    />
+                    <button
+                      type="button"
+                      className="portion-remove"
+                      onClick={() =>
+                        setEditDraft((prev) => ({
+                          ...prev,
+                          portionOptions: prev.portionOptions.filter((_, i) => i !== index),
+                        }))
+                      }
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
             {printerOptions.length > 0 && (
               <div className="printer-select">
                 <span className="printer-select-title">Chek printerlari</span>
@@ -858,46 +1493,94 @@ export default function MenuPage() {
 
       {weightOrderModal.open && weightOrderModal.item && (
         <div className="modal-overlay" onClick={closeWeightModal}>
-          <div className="modal weight-modal" onClick={(e) => e.stopPropagation()}>
-            <h3>{weightOrderModal.item.name}</h3>
-            <p className="modal-description">
-              Kerakli og'irlikni kiriting. Jami summa avtomatik hisoblanadi.
-            </p>
-            <div className="weight-modal-summary">
-              <span>1 {weightModalUnitLabel} uchun narx</span>
-              <strong>{priceFormatter.format(weightOrderModal.item.price)} so‘m</strong>
-            </div>
-            {Number(weightOrderModal.item.weightStep || 0) > 0 && (
+          <div
+            className={["weight-modal-container", inlineKeyboard ? "weight-modal-container--inline" : null]
+              .filter(Boolean)
+              .join(" ")}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal weight-modal">
+              <h3>{weightOrderModal.item.name}</h3>
+              <p className="modal-description">
+              Kerakli og'irlikni yoki summani kiriting. Jami summa avtomatik hisoblanadi.
+              </p>
               <div className="weight-modal-summary">
-                <span>Minimal buyurtma</span>
-                <strong>
-                  {quantityFormatter.format(Number(weightOrderModal.item.weightStep))}{" "}
-                  {weightModalUnitLabel}
-                </strong>
+                <span>1 {weightModalUnitLabel} uchun narx</span>
+                <strong>{priceFormatter.format(weightOrderModal.item.price)} so‘m</strong>
               </div>
-            )}
-            <label className="modal-field">
-              <span>Og'irlik ({weightModalUnitLabel}):</span>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={weightOrderModal.amount}
-                onChange={(e) => handleWeightAmountChange(e.target.value)}
-                placeholder={weightModalPlaceholder}
-                autoFocus
-              />
-            </label>
-            {weightSelectionPreview && (
-              <div className="weight-preview">
-                <div>Tanlangan miqdor: <strong>{weightSelectionPreview.weightLabel}</strong></div>
-                <div>Taxminiy summa: <strong>{weightSelectionPreview.amountLabel} so‘m</strong></div>
+              {Number(weightOrderModal.item.weightStep || 0) > 0 && (
+                <div className="weight-modal-summary">
+                  <span>Minimal buyurtma</span>
+                  <strong>
+                    {quantityFormatter.format(Number(weightOrderModal.item.weightStep))}{" "}
+                    {weightModalUnitLabel}
+                  </strong>
+                </div>
+              )}
+              <div className="weight-mode-toggle">
+                <button
+                  type="button"
+                  className={weightOrderModal.mode === "weight" ? "weight-mode-btn active" : "weight-mode-btn"}
+                  onClick={() => handleWeightModeSwitch("weight")}
+                >
+                  Og'irlikni kiritish
+                </button>
+                <button
+                  type="button"
+                  className={weightOrderModal.mode === "price" ? "weight-mode-btn active" : "weight-mode-btn"}
+                  onClick={() => handleWeightModeSwitch("price")}
+                >
+                  Summani kiritish
+                </button>
               </div>
-            )}
-            {weightOrderModal.error && <p className="modal-error">{weightOrderModal.error}</p>}
-            <div className="modal-actions">
-              <button onClick={confirmWeightSelection}>Savatga qo'shish</button>
-              <button onClick={closeWeightModal}>Bekor qilish</button>
+              {weightOrderModal.mode === "price" ? (
+                <label className="modal-field">
+                  <span>Summa (so‘m):</span>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    value={weightOrderModal.priceInput}
+                    onChange={(e) => handlePriceValueChange(e.target.value)}
+                    placeholder={priceModalPlaceholder}
+                    autoFocus
+                    onFocus={showPriceKeyboard}
+                    onPointerDown={showPriceKeyboard}
+                  />
+                </label>
+              ) : (
+                <label className="modal-field">
+                  <span>Og'irlik ({weightModalUnitLabel}):</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={weightOrderModal.weightInput}
+                    onChange={(e) => handleWeightValueChange(e.target.value)}
+                    placeholder={weightModalPlaceholder}
+                    autoFocus
+                    onFocus={showWeightKeyboard}
+                    onPointerDown={showWeightKeyboard}
+                  />
+                </label>
+              )}
+              {weightSelectionPreview && (
+                <div className="weight-preview">
+                  <div>Tanlangan miqdor: <strong>{weightSelectionPreview.weightLabel}</strong></div>
+                  <div>Taxminiy summa: <strong>{weightSelectionPreview.amountLabel} so‘m</strong></div>
+                  {weightSelectionPreview.requestedAmountLabel && (
+                    <div className={weightSelectionPreview.stepAdjusted ? "weight-preview-note" : "weight-preview-subtle"}>
+                      So'ralgan summa: <strong>{weightSelectionPreview.requestedAmountLabel} so‘m</strong>
+                      {weightSelectionPreview.stepAdjusted ? " (qadam bo'yicha moslashtirildi)" : ""}
+                    </div>
+                  )}
+                </div>
+              )}
+              {weightOrderModal.error && <p className="modal-error">{weightOrderModal.error}</p>}
+              <div className="modal-actions">
+                <button onClick={confirmWeightSelection}>Savatga qo'shish</button>
+                <button onClick={closeWeightModal}>Bekor qilish</button>
+              </div>
             </div>
+            {inlineKeyboard && keyboardElement}
           </div>
         </div>
       )}
@@ -945,6 +1628,8 @@ export default function MenuPage() {
           </div>
         </div>
       )}
+
+      {!inlineKeyboard && keyboardElement}
     </div>
   );
 }
