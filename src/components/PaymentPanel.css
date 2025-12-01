@@ -151,11 +151,38 @@
   color: #fff;
 }
 
+.payment-refund-hint {
+  margin: 0;
+  margin-bottom: 4px;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
 .payment-items-scroll {
   max-height: 240px;
   overflow-y: auto;
   border-radius: calc(var(--app-radius-sm) - 4px);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.payment-items-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+body.electron-shell .payment-items-scroll {
+  scrollbar-width: thin;
+}
+
+body.electron-shell .payment-items-scroll::-webkit-scrollbar {
+  display: block;
+  width: 6px;
+}
+
+body.electron-shell .payment-items-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
 }
 
 .payment-items-empty {
@@ -186,6 +213,11 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+.payment-items-table thead th.refund-col {
+  text-align: right;
+  width: 110px;
+}
+
 .payment-items-table tbody tr:not(.payment-item-notes-row) {
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
@@ -194,6 +226,50 @@
   padding: 0.6rem 0.65rem;
   color: var(--app-text);
   vertical-align: top;
+}
+
+.payment-item-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.payment-item-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--app-text);
+  cursor: pointer;
+  transition: transform var(--app-transition), border var(--app-transition), background var(--app-transition), color var(--app-transition);
+}
+
+.payment-item-action:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.payment-item-action.danger {
+  border-color: rgba(255, 0, 60, 0.32);
+  color: #ff6b81;
+}
+
+.payment-item-action.danger:hover:not(:disabled) {
+  border-color: rgba(255, 0, 60, 0.52);
+  background: rgba(255, 0, 60, 0.16);
+  color: #fff;
+}
+
+.payment-item-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .payment-item-name {
@@ -220,6 +296,104 @@
   background: rgba(255, 255, 255, 0.05);
   border-radius: calc(var(--app-radius-sm) - 4px);
   padding: 0.45rem 0.55rem;
+}
+
+.payment-refund-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 0.75rem 0.85rem;
+  border-radius: var(--app-radius-sm);
+  border: 1px solid rgba(255, 0, 60, 0.24);
+  background: rgba(255, 0, 60, 0.08);
+}
+
+.payment-refund-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.payment-refund-amount {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #fff;
+}
+
+.payment-refund-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.payment-refund-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.78rem;
+  color: var(--app-text);
+}
+
+.payment-refund-list li strong {
+  display: block;
+  font-size: 0.8rem;
+}
+
+.payment-refund-qty {
+  display: block;
+  font-size: 0.7rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.payment-refund-empty {
+  font-size: 0.76rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.payment-refund-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.payment-refund-btn {
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--app-text);
+  border-radius: 10px;
+  padding: 0.45rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform var(--app-transition), border var(--app-transition), background var(--app-transition);
+}
+
+.payment-refund-btn.primary {
+  background: rgba(255, 0, 60, 0.18);
+  border-color: rgba(255, 0, 60, 0.45);
+  color: #fff;
+  box-shadow: 0 12px 28px rgba(255, 0, 60, 0.18);
+}
+
+.payment-refund-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.26);
+}
+
+.payment-refund-btn.primary:hover:not(:disabled) {
+  border-color: rgba(255, 0, 60, 0.6);
+}
+
+.payment-refund-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .align-center {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { FiDownload, FiPrinter } from "react-icons/fi";
+import { FiDownload, FiMinusCircle, FiPrinter, FiTrash2 } from "react-icons/fi";
 import api from "../shared/api";
 import { printCheck, downloadCheckAsHTML } from "../utils/checkPrinter";
 import "./PaymentPanel.css";
@@ -14,7 +14,7 @@ const paymentTypes = [
 
 const DISCOUNT_PRESETS = [0, 5, 10, 15];
 
-const PaymentPanel = ({ order, onPaid }) => {
+const PaymentPanel = ({ order, onPaid, onOrderUpdate = () => {} }) => {
   const [method, setMethod] = useState("cash");
   const [discount, setDiscount] = useState(0);
   const [amount, setAmount] = useState(0);
@@ -25,6 +25,9 @@ const PaymentPanel = ({ order, onPaid }) => {
   const [printerSettings, setPrinterSettings] = useState({});
   const [printing, setPrinting] = useState(false);
   const [lastPayment, setLastPayment] = useState(null);
+  const [editableItems, setEditableItems] = useState([]);
+  const [originalItems, setOriginalItems] = useState([]);
+  const [itemsSaving, setItemsSaving] = useState(false);
 
   const numberFormatter = useMemo(() => new Intl.NumberFormat("uz-UZ"), []);
   const formatCurrency = useCallback(
@@ -32,42 +35,108 @@ const PaymentPanel = ({ order, onPaid }) => {
     [numberFormatter]
   );
 
-  const orderItems = useMemo(() => {
-    if (!Array.isArray(order?.items)) return [];
-    return order.items.map((item, index) => {
-      const qty = Number(item?.qty ?? 0) || 0;
-      const price = Number(item?.price ?? 0) || 0;
-      const total = qty * price;
-      const modifiers = Array.isArray(item?.modifiers) ? item.modifiers : [];
+  const normalizeOrderItems = useCallback((items) => {
+    if (!Array.isArray(items)) return [];
+    return items.map((item, index) => {
+      const source = item ? JSON.parse(JSON.stringify(item)) : {};
+      const key = source?._id ? String(source._id) : `${index}-${source?.menuItem || "manual"}`;
+      const qty = Number(source?.qty ?? 0) || 0;
+      const price = Number(source?.price ?? 0) || 0;
+      const modifiers = Array.isArray(source?.modifiers)
+        ? source.modifiers
+            .map((modifier) => {
+              if (!modifier) return null;
+              if (typeof modifier === "string") {
+                return { name: modifier, price: 0 };
+              }
+              return {
+                name: modifier?.name || "",
+                price: Number(modifier?.price || 0),
+              };
+            })
+            .filter(Boolean)
+        : [];
+
       return {
-        key: item?._id || `${index}-${item?.name || "item"}`,
-        name: item?.name || "Pozitsiya",
+        ...source,
+        __key: key,
         qty,
         price,
-        total,
-        notes: item?.notes || "",
-        modifiers: modifiers
-          .filter(Boolean)
-          .map((mod) => (typeof mod === "string" ? mod : mod?.name))
-          .filter(Boolean),
+        notes: typeof source?.notes === "string" ? source.notes : "",
+        portionKey: source?.portionKey || "standard",
+        portionLabel: source?.portionLabel || "",
+        modifiers,
+        productionPrinterIds: Array.isArray(source?.productionPrinterIds)
+          ? source.productionPrinterIds.filter(Boolean)
+          : [],
+        productionTags: Array.isArray(source?.productionTags)
+          ? source.productionTags.filter(Boolean)
+          : [],
       };
     });
-  }, [order?.items]);
+  }, []);
+
+  const serializeItems = useCallback((items) => {
+    return JSON.stringify(
+      (Array.isArray(items) ? items : []).map(({ __key, ...rest }) => ({
+        ...rest,
+        modifiers: Array.isArray(rest.modifiers)
+          ? rest.modifiers.map((modifier) => ({
+              name: modifier?.name || "",
+              price: Number(modifier?.price || 0),
+            }))
+          : [],
+      }))
+    );
+  }, []);
+
+  useEffect(() => {
+    const normalized = normalizeOrderItems(order?.items || []);
+    setEditableItems(normalized);
+    setOriginalItems(normalized);
+  }, [normalizeOrderItems, order?.items, order?._id]);
+
+  const orderItems = useMemo(() => {
+    if (!Array.isArray(editableItems)) return [];
+    return editableItems
+      .filter((item) => Number(item?.qty ?? 0) > 0)
+      .map((item, index) => {
+        const key = item?.__key || item?._id || `${index}-${item?.name || "item"}`;
+        const qty = Number(item?.qty ?? 0) || 0;
+        const price = Number(item?.price ?? 0) || 0;
+        const total = qty * price;
+        const modifiers = Array.isArray(item?.modifiers) ? item.modifiers : [];
+        return {
+          key,
+          internalKey: key,
+          name: item?.name || "Pozitsiya",
+          qty,
+          price,
+          total,
+          notes: item?.notes || "",
+          modifiers: modifiers
+            .filter(Boolean)
+            .map((mod) => (typeof mod === "string" ? mod : mod?.name))
+            .filter(Boolean),
+        };
+      });
+  }, [editableItems]);
 
   const totals = useMemo(() => {
-    const items = orderItems;
-    const subtotal =
-      typeof order?.subtotal === "number"
-        ? order.subtotal
-        : items.reduce((acc, item) => acc + (item.price || 0) * (item.qty || 1), 0);
-    const tax = typeof order?.tax === "number" ? order.tax : 0;
+    const items = Array.isArray(editableItems)
+      ? editableItems.filter((item) => Number(item?.qty ?? 0) > 0)
+      : [];
+    const subtotal = items.reduce(
+      (acc, item) => acc + (Number(item?.price ?? 0) * Number(item?.qty ?? 0)),
+      0
+    );
+    const tax = typeof order?.tax === "number" ? Number(order.tax) : 0;
     const totalBeforeDiscount = subtotal + tax;
-    const baseDiscount =
-      typeof order?.discount === "number"
-        ? Math.min(order.discount, totalBeforeDiscount)
-        : 0;
+    const baseDiscount = typeof order?.discount === "number"
+      ? Math.min(Number(order.discount), totalBeforeDiscount)
+      : 0;
     const totalDue = Math.max(0, totalBeforeDiscount - baseDiscount);
-    const itemCount = items.reduce((acc, item) => acc + (item.qty || 0), 0);
+    const itemCount = items.reduce((acc, item) => acc + Number(item?.qty ?? 0), 0);
 
     return {
       subtotal,
@@ -77,9 +146,82 @@ const PaymentPanel = ({ order, onPaid }) => {
       totalDue,
       itemCount,
     };
-  }, [order, orderItems]);
+  }, [editableItems, order?.discount, order?.tax]);
 
   const maxDiscount = totals.totalBeforeDiscount;
+  const serializedOriginalItems = useMemo(
+    () => serializeItems(originalItems),
+    [originalItems, serializeItems]
+  );
+  const serializedEditableItems = useMemo(
+    () => serializeItems(editableItems),
+    [editableItems, serializeItems]
+  );
+  const itemsDirty = serializedOriginalItems !== serializedEditableItems;
+
+  const clampCurrency = useCallback(
+    (value) => {
+      if (typeof value !== "number" || Number.isNaN(value)) {
+        return 0;
+      }
+      return Math.max(0, Math.round(value));
+    },
+    []
+  );
+
+  const refundSummary = useMemo(() => {
+    if (!originalItems.length) {
+      return { items: [], totalAmount: 0, totalQty: 0 };
+    }
+
+    const originalMap = new Map(
+      originalItems.map((item) => [item.__key || item._id, item])
+    );
+    const currentMap = new Map(
+      editableItems.map((item) => [item.__key || item._id, item])
+    );
+
+    const changes = [];
+
+    originalMap.forEach((originalItem, key) => {
+      const originalQty = Number(originalItem?.qty ?? 0);
+      if (originalQty <= 0) return;
+      const currentItem = currentMap.get(key);
+      const currentQty = Number(currentItem?.qty ?? 0);
+      const diffQty = originalQty - currentQty;
+      if (diffQty > 0) {
+        const unitPrice = Number(originalItem?.price ?? 0);
+        changes.push({
+          key,
+          name: originalItem?.name || "Pozitsiya",
+          qty: diffQty,
+          amount: diffQty * unitPrice,
+        });
+      }
+    });
+
+    const totalAmount = changes.reduce((acc, change) => acc + change.amount, 0);
+    const totalQty = changes.reduce((acc, change) => acc + change.qty, 0);
+
+    return { items: changes, totalAmount, totalQty };
+  }, [editableItems, originalItems]);
+
+  useEffect(() => {
+    const max = clampCurrency(maxDiscount);
+    const normalizedDiscount = clampCurrency(discount);
+    const clampedDiscount = Math.min(normalizedDiscount, max);
+    if (clampedDiscount !== discount) {
+      setDiscount(clampedDiscount);
+    }
+    const due = Math.max(0, max - clampedDiscount);
+    setAmount((prev) => {
+      const normalizedPrev = clampCurrency(prev);
+      if (normalizedPrev > due) {
+        return due;
+      }
+      return normalizedPrev;
+    });
+  }, [clampCurrency, discount, maxDiscount]);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -96,6 +238,89 @@ const PaymentPanel = ({ order, onPaid }) => {
     fetchSettings();
   }, []);
 
+  const handleDecreaseItem = useCallback((itemKey) => {
+    setEditableItems((prev) =>
+      prev.map((item) => {
+        if ((item.__key || item._id) !== itemKey) return item;
+        const currentQty = Number(item.qty || 0);
+        if (currentQty <= 0) return { ...item, qty: 0 };
+        return { ...item, qty: Math.max(0, currentQty - 1) };
+      })
+    );
+  }, []);
+
+  const handleRemoveItem = useCallback((itemKey) => {
+    setEditableItems((prev) => prev.filter((item) => (item.__key || item._id) !== itemKey));
+  }, []);
+
+  const handleResetItems = useCallback(() => {
+    setEditableItems(originalItems.map((item) => ({ ...item })));
+    setError("");
+    setSuccess("");
+  }, [originalItems]);
+
+  const buildPayloadItems = useCallback((items) => {
+    return items
+      .filter((item) => Number(item.qty || 0) > 0)
+      .map((item) => ({
+        menuItem: item.menuItem || null,
+        name: item.name,
+        qty: Number(item.qty || 0),
+        price: Number(item.price || 0),
+        notes: item.notes || "",
+        portionKey: item.portionKey || "standard",
+        portionLabel: item.portionLabel || "",
+        modifiers: Array.isArray(item.modifiers)
+          ? item.modifiers.map((mod) => ({
+              name: mod?.name || "",
+              price: Number(mod?.price || 0),
+            }))
+          : [],
+        productionPrinterIds: Array.isArray(item.productionPrinterIds)
+          ? item.productionPrinterIds
+          : [],
+        productionTags: Array.isArray(item.productionTags)
+          ? item.productionTags
+          : [],
+      }));
+  }, []);
+
+  const handleApplyRefund = useCallback(async () => {
+    if (!order?._id) return;
+    if (!refundSummary.items.length) {
+      setError("Vozvrat uchun o'zgarish yo'q");
+      return;
+    }
+    const payloadItems = buildPayloadItems(editableItems);
+    setItemsSaving(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      const payload = {
+        items: payloadItems,
+        subtotal: totals.subtotal,
+        tax: totals.tax,
+        discount: totals.baseDiscount,
+        total: totals.totalDue,
+      };
+
+      const response = await api.put(`/orders/${order._id}`, payload);
+      const updatedOrder = response.data;
+      const normalized = normalizeOrderItems(updatedOrder?.items || payloadItems);
+      setEditableItems(normalized);
+      setOriginalItems(normalized);
+      if (onOrderUpdate) {
+        onOrderUpdate(updatedOrder);
+      }
+      setSuccess("Vozvrat saqlandi");
+    } catch (err) {
+      setError(err?.response?.data?.message || "Vozvratni saqlab bo'lmadi");
+    } finally {
+      setItemsSaving(false);
+    }
+  }, [buildPayloadItems, editableItems, normalizeOrderItems, onOrderUpdate, order?._id, refundSummary, totals.baseDiscount, totals.subtotal, totals.tax, totals.totalDue]);
+
   useEffect(() => {
     setMethod("cash");
     setDiscount(totals.baseDiscount);
@@ -105,16 +330,6 @@ const PaymentPanel = ({ order, onPaid }) => {
     setShowCheckOptions(false);
     setLastPayment(null);
   }, [order?._id, totals.baseDiscount, totals.totalDue]);
-
-  const clampCurrency = useCallback(
-    (value) => {
-      if (typeof value !== "number" || Number.isNaN(value)) {
-        return 0;
-      }
-      return Math.max(0, Math.round(value));
-    },
-    []
-  );
 
   const handleDiscountChange = useCallback(
     (value) => {
@@ -323,59 +538,129 @@ const PaymentPanel = ({ order, onPaid }) => {
       </div>
 
       {order?._id && (
-        <div className="payment-items-card">
-          <div className="payment-items-head">
-            <div>
-              <span className="payment-section-label">Buyurtma pozitsiyalari</span>
-              <p>
-                {orderItems.length > 0
-                  ? `${orderItems.length} ta nom, ${totals.itemCount} dona`
-                  : "Pozitsiyalar hali qo'shilmagan"}
-              </p>
+        <>
+          <div className="payment-items-card">
+            <div className="payment-items-head">
+              <div>
+                <span className="payment-section-label">Buyurtma pozitsiyalari</span>
+                <p>
+                  {orderItems.length > 0
+                    ? `${orderItems.length} ta nom, ${totals.itemCount} dona`
+                    : "Pozitsiyalar hali qo'shilmagan"}
+                </p>
+              </div>
+              <span className="payment-items-total">{formatCurrency(totals.subtotal)}</span>
             </div>
-            <span className="payment-items-total">{formatCurrency(totals.subtotal)}</span>
-          </div>
-          {orderItems.length > 0 ? (
-            <div className="payment-items-scroll">
-              <table className="payment-items-table">
-                <thead>
-                  <tr>
-                    <th>Taom</th>
-                    <th className="align-center">Soni</th>
-                    <th className="align-right">Narx</th>
-                    <th className="align-right">Jami</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orderItems.map((item) => (
-                    <React.Fragment key={item.key}>
-                      <tr>
-                        <td>
-                          <strong className="payment-item-name">{item.name}</strong>
-                          {item.modifiers.length > 0 && (
-                            <span className="payment-item-meta">{item.modifiers.join(", ")}</span>
-                          )}
-                        </td>
-                        <td className="align-center">{item.qty}</td>
-                        <td className="align-right">{formatCurrency(item.price)}</td>
-                        <td className="align-right">{formatCurrency(item.total)}</td>
-                      </tr>
-                      {item.notes && (
-                        <tr className="payment-item-notes-row">
-                          <td colSpan={4} className="payment-item-notes">
-                            {item.notes}
+            <p className="payment-refund-hint">
+              Vozvrat uchun minus yoki o'chirish tugmalaridan foydalaning.
+            </p>
+            {orderItems.length > 0 ? (
+              <div className="payment-items-scroll">
+                <table className="payment-items-table">
+                  <thead>
+                    <tr>
+                      <th>Taom</th>
+                      <th className="align-center">Soni</th>
+                      <th className="align-right">Narx</th>
+                      <th className="align-right">Jami</th>
+                      <th className="align-right refund-col">Vozvrat</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orderItems.map((item) => (
+                      <React.Fragment key={item.key}>
+                        <tr>
+                          <td>
+                            <strong className="payment-item-name">{item.name}</strong>
+                            {item.modifiers.length > 0 && (
+                              <span className="payment-item-meta">{item.modifiers.join(", ")}</span>
+                            )}
+                          </td>
+                          <td className="align-center">{item.qty}</td>
+                          <td className="align-right">{formatCurrency(item.price)}</td>
+                          <td className="align-right">{formatCurrency(item.total)}</td>
+                          <td className="payment-item-actions">
+                            <button
+                              type="button"
+                              className="payment-item-action"
+                              onClick={() => handleDecreaseItem(item.internalKey)}
+                              disabled={loading || itemsSaving}
+                              title="Soni kamaytirish"
+                            >
+                              <FiMinusCircle />
+                            </button>
+                            <button
+                              type="button"
+                              className="payment-item-action danger"
+                              onClick={() => handleRemoveItem(item.internalKey)}
+                              disabled={loading || itemsSaving}
+                              title="Taomni olib tashlash"
+                            >
+                              <FiTrash2 />
+                            </button>
                           </td>
                         </tr>
-                      )}
-                    </React.Fragment>
+                        {item.notes && (
+                          <tr className="payment-item-notes-row">
+                            <td colSpan={5} className="payment-item-notes">
+                              {item.notes}
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="payment-items-empty">Bu buyurtmada pozitsiyalar mavjud emas.</div>
+            )}
+          </div>
+
+          {itemsDirty && (
+            <div className="payment-refund-card">
+              <div className="payment-refund-head">
+                <span className="payment-section-label">Vozvrat</span>
+                <span className="payment-refund-amount">{formatCurrency(refundSummary.totalAmount)}</span>
+              </div>
+              {refundSummary.items.length ? (
+                <ul className="payment-refund-list">
+                  {refundSummary.items.map((item) => (
+                    <li key={item.key}>
+                      <span>
+                        <strong>{item.name}</strong>
+                        <span className="payment-refund-qty">−{item.qty} dona</span>
+                      </span>
+                      <span>{formatCurrency(item.amount)}</span>
+                    </li>
                   ))}
-                </tbody>
-              </table>
+                </ul>
+              ) : (
+                <div className="payment-refund-empty">
+                  O'zgartirishlar kiritildi, ammo qaytariladigan taom aniqlanmadi.
+                </div>
+              )}
+              <div className="payment-refund-actions">
+                <button
+                  type="button"
+                  className="payment-refund-btn primary"
+                  onClick={handleApplyRefund}
+                  disabled={itemsSaving || loading}
+                >
+                  {itemsSaving ? "Saqlanmoqda..." : "Vozvratni tasdiqlash"}
+                </button>
+                <button
+                  type="button"
+                  className="payment-refund-btn"
+                  onClick={handleResetItems}
+                  disabled={itemsSaving || loading}
+                >
+                  Bekor qilish
+                </button>
+              </div>
             </div>
-          ) : (
-            <div className="payment-items-empty">Bu buyurtmada pozitsiyalar mavjud emas.</div>
           )}
-        </div>
+        </>
       )}
 
       <div className="payment-method-section">

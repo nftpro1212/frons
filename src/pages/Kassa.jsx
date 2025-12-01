@@ -376,6 +376,21 @@ const Kassa = () => {
     refreshPrinters();
   }, [loadTables, loadOrder, refreshPrinters, selectedTable]);
 
+  const handleOrderUpdate = useCallback(
+    (updatedOrder) => {
+      if (!updatedOrder?._id) return;
+      setSelectedOrder((prev) => {
+        if (!prev || prev._id !== updatedOrder._id) return prev;
+        return {
+          ...prev,
+          ...updatedOrder,
+          table: prev.table || updatedOrder.table || selectedTable,
+        };
+      });
+    },
+    [selectedTable]
+  );
+
   const tableCategories = useMemo(() => {
     if (!tables.length) return [];
 
@@ -789,7 +804,7 @@ const Kassa = () => {
         <aside className="kassa-panel kassa-right-panel">
           <div className="kassa-payment-card">
             {selectedOrder ? (
-              <PaymentPanel order={selectedOrder} onPaid={handlePaid} />
+              <PaymentPanel order={selectedOrder} onPaid={handlePaid} onOrderUpdate={handleOrderUpdate} />
             ) : (
               <div className="kassa-payment-placeholder">
                 <FiCreditCard size={32} />

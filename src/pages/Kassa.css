@@ -132,6 +132,26 @@
   overflow-x: auto;
   padding-bottom: 4px;
   -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.kassa-printer-list::-webkit-scrollbar {
+  display: none;
+}
+
+body.electron-shell .kassa-printer-list {
+  scrollbar-width: thin;
+}
+
+body.electron-shell .kassa-printer-list::-webkit-scrollbar {
+  display: block;
+  height: 6px;
+}
+
+body.electron-shell .kassa-printer-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
 }
 
 .kassa-printer-row {
@@ -518,15 +538,26 @@
   padding-right: 4px;
   flex: 1;
   min-height: 0;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .kassa-table-grid::-webkit-scrollbar {
+  display: none;
+}
+
+body.electron-shell .kassa-table-grid {
+  scrollbar-width: thin;
+}
+
+body.electron-shell .kassa-table-grid::-webkit-scrollbar {
+  display: block;
   width: 6px;
 }
 
-.kassa-table-grid::-webkit-scrollbar-thumb {
-  background: rgba(255, 0, 60, 0.28);
-  border-radius: 12px;
+body.electron-shell .kassa-table-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
 }
 
 .kassa-table-grid > .kassa-loader,

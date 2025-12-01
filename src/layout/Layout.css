@@ -18,13 +18,15 @@
 }
 
 body.electron-shell {
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 body.electron-shell .layout-shell {
   height: 100vh;
   min-height: 100vh;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
 }
 
 body.electron-shell .layout-content {
@@ -32,7 +34,7 @@ body.electron-shell .layout-content {
   min-height: 100%;
   overflow-y: auto;
   padding-right: 4px;
-  scrollbar-width: none;
+  scrollbar-width: thin;
 }
 
 body.electron-shell .layout-main-box {
@@ -40,7 +42,13 @@ body.electron-shell .layout-main-box {
 }
 
 body.electron-shell .layout-content::-webkit-scrollbar {
-  display: none;
+  display: block;
+  width: 6px;
+}
+
+body.electron-shell .layout-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
 }
 
 body.electron-shell .layout-shell.no-navbar .layout-main-box,
