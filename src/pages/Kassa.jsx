@@ -562,11 +562,11 @@ const Kassa = () => {
 
   const allTables = useMemo(() => [...tables, ...virtualTables], [tables, virtualTables]);
 
-  const filteredTables = useMemo(() => {
+  const tableCategories = useMemo(() => {
     if (!allTables.length) return [];
-    const search = searchTerm.trim().toLowerCase();
 
-    return allTables
+    const counts = new Map();
+    allTables.forEach((table) => {
       const category = getTableCategory(table);
       counts.set(category, (counts.get(category) || 0) + 1);
     });
@@ -582,8 +582,6 @@ const Kassa = () => {
 
     return allTables
       .filter((table) => {
-          table.assignedToName,
-          table.assignedTo?.name,
         const statusMatch = statusFilter === "all" || table.status === statusFilter;
         if (!statusMatch) return false;
 
@@ -593,35 +591,48 @@ const Kassa = () => {
 
         if (!search) return true;
         const haystack = [
-        const lockedA = isTableLockedForUser(a, currentUserId, isManager);
-        const lockedB = isTableLockedForUser(b, currentUserId, isManager);
-        if (lockedA && !lockedB) return 1;
-        if (!lockedA && lockedB) return -1;
           table.name,
           table.code,
           table.category,
           table.virtualMeta?.meta,
           table.virtualMeta?.customerName,
+          table.assignedToName,
+          table.assignedTo?.name,
         ]
           .filter(Boolean)
-  }, [allTables, statusFilter, categoryFilter, searchTerm, selectedTable, currentUserId, isManager]);
+          .join(" ")
           .toLowerCase();
         return haystack.includes(search);
       })
       .sort((a, b) => {
         if (selectedTable?._id === a._id) return -1;
         if (selectedTable?._id === b._id) return 1;
+
+        const lockedA = isTableLockedForUser(a, currentUserId, isManager);
+        const lockedB = isTableLockedForUser(b, currentUserId, isManager);
+        if (lockedA && !lockedB) return 1;
+        if (!lockedA && lockedB) return -1;
+
         if (a.isVirtual && !b.isVirtual) return -1;
         if (!a.isVirtual && b.isVirtual) return 1;
         if (a.isVirtual && b.isVirtual) {
           return b.sortTimestamp - a.sortTimestamp;
         }
+
         const orderA = STATUS_ORDER[a.status] ?? 3;
         const orderB = STATUS_ORDER[b.status] ?? 3;
         if (orderA !== orderB) return orderA - orderB;
         return (a.name || "").localeCompare(b.name || "");
       });
-  }, [allTables, statusFilter, categoryFilter, searchTerm, selectedTable]);
+  }, [
+    allTables,
+    categoryFilter,
+    currentUserId,
+    isManager,
+    searchTerm,
+    selectedTable,
+    statusFilter,
+  ]);
 
   useEffect(() => {
     if (!selectedTable?._id) return;
