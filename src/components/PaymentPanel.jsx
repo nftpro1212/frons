@@ -65,6 +65,9 @@ const PaymentPanel = ({ order, onPaid, onOrderUpdate = () => {} }) => {
         notes: typeof source?.notes === "string" ? source.notes : "",
         portionKey: source?.portionKey || "standard",
         portionLabel: source?.portionLabel || "",
+        pricingMode: source?.pricingMode || "fixed",
+        weightUnit: source?.weightUnit || "",
+        displayQty: source?.displayQty || "",
         modifiers,
         productionPrinterIds: Array.isArray(source?.productionPrinterIds)
           ? source.productionPrinterIds.filter(Boolean)
@@ -270,6 +273,9 @@ const PaymentPanel = ({ order, onPaid, onOrderUpdate = () => {} }) => {
         notes: item.notes || "",
         portionKey: item.portionKey || "standard",
         portionLabel: item.portionLabel || "",
+        pricingMode: item.pricingMode || "fixed",
+        weightUnit: item.weightUnit || "",
+        displayQty: item.displayQty || "",
         modifiers: Array.isArray(item.modifiers)
           ? item.modifiers.map((mod) => ({
               name: mod?.name || "",
