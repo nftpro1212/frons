@@ -6,10 +6,13 @@ import {
   FiFilter,
   FiLayers,
   FiGrid,
+  FiPrinter,
   FiRefreshCcw,
   FiSearch,
   FiShoppingCart,
   FiUsers,
+  FiWifi,
+  FiWifiOff,
 } from "react-icons/fi";
 import PaymentPanel from "../components/PaymentPanel";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -29,6 +32,12 @@ const STATUS_LABELS = {
   ready: "Tayyor",
   closed: "Yopilgan",
   cancelled: "Bekor qilingan",
+};
+
+const PRINTER_STATUS_LABELS = {
+  connected: "Ulangan",
+  disconnected: "Uzilgan",
+  unknown: "Kutilmoqda",
 };
 
 const TABLE_STATUS_LABELS = {
@@ -109,13 +118,143 @@ const Kassa = () => {
   const [notification, setNotification] = useState(null);
   const [lastSync, setLastSync] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [printerStatus, setPrinterStatus] = useState({
+    list: [],
+    summary: { total: 0, connected: 0, disconnected: 0, failed: 0 },
+    lastCheckedAt: null,
+  });
+  const [loadingPrinters, setLoadingPrinters] = useState(false);
 
   const numberFormatter = useMemo(() => new Intl.NumberFormat("uz-UZ"), []);
+  const timeFormatter = useMemo(
+    () =>
+      new Intl.DateTimeFormat("uz-UZ", {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    []
+  );
+
+  const loadConfiguredPrinters = useCallback(async () => {
+    try {
+      const res = await api.get("/settings");
+      const settings = res?.data || {};
+      const printersRaw = settings?.printerSettings?.printers;
+      if (!Array.isArray(printersRaw) || !printersRaw.length) return [];
+
+      return printersRaw
+        .map((printer) => ({
+        printerId: printer?._id ?? null,
+        name: printer?.name || "Printer",
+        role: printer?.role || null,
+        connectionStatus: "unknown",
+        success: null,
+        message: "Holat hali tekshirilmagan",
+        via: printer?.dispatchMode || settings?.printerSettings?.dispatchMode || "direct",
+        agentChannel: printer?.agentChannel || settings?.printerSettings?.agentChannel || "default",
+        ipAddress: printer?.ipAddress || null,
+        port: printer?.port || null,
+        checkedAt: null,
+        errorCode: null,
+        }))
+        .sort((a, b) => (a.name || "").localeCompare(b.name || "", "uz", { sensitivity: "base" }));
+    } catch (error) {
+      console.error("[KASSA] Printer sozlamalarini yuklashda xatolik", error);
+      return [];
+    }
+  }, []);
 
   const formatCurrency = useCallback(
     (value) => `${numberFormatter.format(Math.round(value || 0))} so'm`,
     [numberFormatter]
   );
+
+  const refreshPrinters = useCallback(async () => {
+    setLoadingPrinters(true);
+    try {
+      const response = await api.post("/settings/refresh-printers");
+      const payload = response?.data || {};
+      const printersRaw = Array.isArray(payload.printers) ? payload.printers : [];
+      const summary = payload.summary || {};
+
+      const normalized = printersRaw.map((printer) => ({
+        ...printer,
+        checkedAt: printer?.checkedAt ? new Date(printer.checkedAt) : null,
+      }));
+
+      const sorted = [...normalized].sort((a, b) => {
+        const aConnected = a.connectionStatus === "connected";
+        const bConnected = b.connectionStatus === "connected";
+        if (aConnected && !bConnected) return -1;
+        if (!aConnected && bConnected) return 1;
+        return (a.name || "").localeCompare(b.name || "", "uz", { sensitivity: "base" });
+      });
+
+      const total = Number.isFinite(Number(summary.total)) ? Number(summary.total) : sorted.length;
+      const connected = Number.isFinite(Number(summary.connected))
+        ? Number(summary.connected)
+        : sorted.filter((item) => item.connectionStatus === "connected").length;
+      const disconnected = Number.isFinite(Number(summary.disconnected))
+        ? Number(summary.disconnected)
+        : Math.max(0, total - connected);
+      const failed = Number.isFinite(Number(summary.failed))
+        ? Number(summary.failed)
+        : sorted.filter((item) => item.success === false).length;
+
+      const lastCheckedCandidate = summary.lastCheckedAt
+        ? new Date(summary.lastCheckedAt)
+        : sorted.reduce((latest, item) => {
+            if (!item.checkedAt) return latest;
+            if (!latest) return item.checkedAt;
+            return item.checkedAt > latest ? item.checkedAt : latest;
+          }, null);
+
+      if (!sorted.length) {
+        const fallback = await loadConfiguredPrinters();
+        if (fallback.length) {
+          setPrinterStatus({
+            list: fallback,
+            summary: {
+              total: fallback.length,
+              connected: 0,
+              disconnected: fallback.length,
+              failed: 0,
+            },
+            lastCheckedAt: null,
+          });
+          return;
+        }
+      }
+
+      setPrinterStatus({
+        list: sorted,
+        summary: {
+          total,
+          connected,
+          disconnected,
+          failed,
+        },
+        lastCheckedAt: lastCheckedCandidate || (sorted.length ? sorted[0].checkedAt : null),
+      });
+    } catch (error) {
+      console.error("[KASSA] Printer holatini yangilashda xatolik", error);
+      const fallback = await loadConfiguredPrinters();
+      if (fallback.length) {
+        setPrinterStatus({
+          list: fallback,
+          summary: {
+            total: fallback.length,
+            connected: 0,
+            disconnected: fallback.length,
+            failed: 0,
+          },
+          lastCheckedAt: null,
+        });
+      }
+    } finally {
+      setLoadingPrinters(false);
+    }
+  }, [loadConfiguredPrinters]);
 
   const loadTables = useCallback(async () => {
     setLoadingTables(true);
@@ -186,19 +325,24 @@ const Kassa = () => {
   }, [loadTables]);
 
   useEffect(() => {
+    refreshPrinters();
+  }, [refreshPrinters]);
+
+  useEffect(() => {
     loadOrder(selectedTable);
   }, [selectedTable?._id, selectedTable?.status, loadOrder]);
 
   useEffect(() => {
     const interval = setInterval(() => {
       loadTables();
+      refreshPrinters();
       if (selectedTable?._id) {
         loadOrder(selectedTable);
       }
     }, 45000);
 
     return () => clearInterval(interval);
-  }, [loadTables, loadOrder, selectedTable]);
+  }, [loadTables, loadOrder, refreshPrinters, selectedTable]);
 
   useEffect(() => {
     if (!notification) return undefined;
@@ -208,12 +352,16 @@ const Kassa = () => {
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadTables();
-    if (selectedTable?._id) {
-      await loadOrder(selectedTable);
+    try {
+      await loadTables();
+      if (selectedTable?._id) {
+        await loadOrder(selectedTable);
+      }
+      await refreshPrinters();
+    } finally {
+      setRefreshing(false);
     }
-    setRefreshing(false);
-  }, [loadTables, loadOrder, selectedTable]);
+  }, [loadTables, loadOrder, refreshPrinters, selectedTable]);
 
   const handlePaid = useCallback(() => {
     setNotification({
@@ -225,7 +373,8 @@ const Kassa = () => {
     if (selectedTable?._id) {
       loadOrder(selectedTable);
     }
-  }, [loadTables, loadOrder, selectedTable]);
+    refreshPrinters();
+  }, [loadTables, loadOrder, refreshPrinters, selectedTable]);
 
   const tableCategories = useMemo(() => {
     if (!tables.length) return [];
@@ -329,11 +478,28 @@ const Kassa = () => {
 
   const lastSyncLabel = useMemo(() => {
     if (!lastSync) return "—";
-    return new Intl.DateTimeFormat("uz-UZ", {
-      hour: "2-digit",
-      minute: "2-digit",
-    }).format(lastSync);
-  }, [lastSync]);
+    return timeFormatter.format(lastSync);
+  }, [lastSync, timeFormatter]);
+
+  const printerSummary = printerStatus.summary;
+  const printerList = printerStatus.list;
+  const printerLastCheckedLabel = useMemo(() => {
+    if (!printerSummary.total) return "Printerlar sozlanmagan";
+    if (!printerStatus.lastCheckedAt) return "Holat kutilmoqda";
+    return `Oxirgi: ${timeFormatter.format(printerStatus.lastCheckedAt)}`;
+  }, [printerStatus.lastCheckedAt, printerSummary.total, timeFormatter]);
+
+  const formatPrinterCheckedAt = useCallback(
+    (date) => {
+      if (!date) return "—";
+      try {
+        return timeFormatter.format(date);
+      } catch (error) {
+        return "—";
+      }
+    },
+    [timeFormatter]
+  );
 
   const metricCards = useMemo(
     () => [
@@ -352,6 +518,15 @@ const Kassa = () => {
         icon: <FiUsers />,
       },
       {
+        key: "printers",
+        label: "Printerlar",
+        value: printerSummary.total
+          ? `${printerSummary.connected}/${printerSummary.total}`
+          : "0",
+        sub: printerLastCheckedLabel,
+        icon: <FiPrinter />,
+      },
+      {
         key: "items",
         label: "Mahsulotlar soni",
         value: orderTotals.itemCount.toString(),
@@ -366,7 +541,15 @@ const Kassa = () => {
         icon: <FiCreditCard />,
       },
     ],
-    [formatCurrency, orderTotals, selectedOrder, tablesStats]
+    [
+      formatCurrency,
+      orderTotals,
+      printerLastCheckedLabel,
+      printerSummary.connected,
+      printerSummary.total,
+      selectedOrder,
+      tablesStats,
+    ]
   );
 
   if (!user || (user.role !== "kassir" && user.role !== "admin")) {
@@ -396,6 +579,75 @@ const Kassa = () => {
             <span className={`kassa-sync-dot${loadingTables || loadingOrder ? " is-syncing" : ""}`} />
             <span>Oxirgi yangilanish: {lastSyncLabel}</span>
             {selectedTable && <span>Tanlangan stol: {selectedTable.name}</span>}
+          </div>
+
+          <div className="kassa-printer-status">
+            <div className="kassa-printer-status-header">
+              <FiPrinter />
+              <span>Printerlar</span>
+              <span className={`kassa-printer-summary${loadingPrinters ? " is-syncing" : ""}`}>
+                {printerSummary.total ? `${printerSummary.connected}/${printerSummary.total}` : "0"}
+              </span>
+              <button
+                type="button"
+                className="kassa-printer-refresh"
+                onClick={refreshPrinters}
+                disabled={loadingPrinters}
+                aria-label="Printerlarni qayta tekshirish"
+                title="Printerlarni qayta tekshirish"
+              >
+                <FiRefreshCcw />
+              </button>
+            </div>
+            <div className="kassa-printer-list">
+              {printerList.length === 0 && !loadingPrinters ? (
+                <div className="kassa-printer-row kassa-printer-row--empty">
+                  <span>Printerlar sozlanmagan</span>
+                </div>
+              ) : (
+                printerList.map((printer) => {
+                  const isOnline = printer.connectionStatus === "connected";
+                  const isOffline = printer.connectionStatus === "disconnected";
+                  const StatusIcon = isOnline ? FiWifi : isOffline ? FiWifiOff : FiClock;
+                  const statusClass = isOnline ? "is-connected" : isOffline ? "is-disconnected" : "is-unknown";
+                  const statusLabel = PRINTER_STATUS_LABELS[printer.connectionStatus] || "Holat kutilmoqda";
+                  const rowStatusClass = `status-${printer.connectionStatus || "unknown"}`;
+
+                  return (
+                    <div
+                      key={printer.printerId || printer.name}
+                      className={`kassa-printer-row ${rowStatusClass}`}
+                    >
+                      <div className="printer-row-main">
+                        <span className="printer-row-icon">
+                          <StatusIcon />
+                        </span>
+                        <div className="printer-row-text">
+                          <strong>{printer.name}</strong>
+                          <span className="printer-row-meta">
+                            {printer.role ? `${printer.role.toUpperCase()} · ` : ""}
+                            {printer.agentChannel || "default"}
+                            {printer.ipAddress ? ` · ${printer.ipAddress}` : ""}
+                            {printer.port ? `:${printer.port}` : ""}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="printer-row-status">
+                        <span className={`printer-status-pill ${statusClass}`}>
+                          {statusLabel}
+                        </span>
+                        <span className="printer-row-checked">
+                          {formatPrinterCheckedAt(printer.checkedAt)}
+                        </span>
+                      </div>
+                      {printer.message && (
+                        <div className="printer-row-message">{printer.message}</div>
+                      )}
+                    </div>
+                  );
+                })
+              )}
+            </div>
           </div>
         </div>
         <div className="kassa-actions">
