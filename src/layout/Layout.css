@@ -98,6 +98,11 @@ body.electron-shell .layout-content.no-navbar .layout-main-box {
   min-width: 0;
 }
 
+body.electron-shell .layout-main-box {
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
 .layout-main-box > .page-shell {
   flex: 1;
   width: 100%;
